@@ -1,0 +1,16 @@
+# Visual Studio / VisualGDB
+.vs/
+.visualgdb/
+VisualGDB/Debug/
+STM32F405/VisualGDB/Debug/
+*.user
+*.suo
+
+# Build outputs
+*.o
+*.obj
+*.elf
+*.bin
+*.hex
+*.map
+
