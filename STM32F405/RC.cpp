@@ -66,7 +66,7 @@ void RC::RC_CheckState() {
 		break;
 
 	case RC_STATE(DOWN, MID):
-		ctrl.mode = CONTROL::FIRE;
+		ctrl.mode = CONTROL::UP_STAIRS;
 		break;
 
 	case RC_STATE(DOWN, DOWN):
@@ -112,6 +112,7 @@ void RC::RC_Control() {
 			break;
 
 		case CONTROL::STOP:
+			
 
 			break;
 
@@ -119,11 +120,46 @@ void RC::RC_Control() {
 
 			break;
 		case CONTROL::CHASSIS_MOVE:
-			ctrl.chassis.speedx = rc.ch[3] * 3000.f / 660.f;
-			ctrl.chassis.speedy = rc.ch[2] * 3000.f / 660.f;
-			ctrl.chassis.speedz = rc.ch[0] * 3000.f / 660.f;
+			DMmotor[0].setSpeed = 2.5f;
+			DMmotor[1].setSpeed = 2.5f;
+			DMmotor[2].setSpeed = 2.5f;
+			DMmotor[3].setSpeed = 2.5f;
+			ctrl.chassis.speedx = rc.ch[3] * 1500.f / 660.f;
+			ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
+			ctrl.chassis.speedz = rc.ch[0] * 700.f / 660.f;
 			break;
+		case CONTROL::UP_STAIRS:
+		{
+			DMmotor[0].setSpeed = 2.5f;
+			DMmotor[1].setSpeed = 2.5f;
+			DMmotor[2].setSpeed = 2.5f;
+			DMmotor[3].setSpeed = 2.5f;
+			float delta1 =
+				rc.ch[3] / 660.0f *
+				1.0f *
+				0.005f;
+			float delta2 = 
+				rc.ch[1] / 660.0f *
+				1.0f *
+				0.005f;
 
+			DMmotor[0].SetTargetPos(
+				DMmotor[0].targetPos + delta1
+			);
+			DMmotor[1].SetTargetPos(
+				DMmotor[1].targetPos - delta2
+			);
+			DMmotor[2].SetTargetPos(
+				DMmotor[2].targetPos - delta1
+			);
+			DMmotor[3].SetTargetPos(
+				DMmotor[3].targetPos + delta2
+			);
+			ctrl.chassis.speedx = rc.ch[2] * 1500.f / 660.f;
+			ctrl.chassis.speedz = rc.ch[0] * 700.0f / 660.f;
+			
+			break;
+		}
 		default:
 			ctrl.chassis.speedx = 0;
 			ctrl.chassis.speedy = 0;
@@ -132,24 +168,12 @@ void RC::RC_Control() {
 		}
 	}
 	else {
-		can1_motor[0].setspeed = 0;
-		can1_motor[1].setspeed = 0;
-		can1_motor[2].setspeed = 0;
-		can1_motor[3].setspeed = 0;
-		can1_motor[4].setspeed = 0;
-		can1_motor[5].setspeed = 0;
-		can1_motor[6].setspeed = 0;
-		can1_motor[7].setspeed = 0;
-		can2_motor[0].setspeed = 0;
-		can2_motor[1].setspeed = 0;
-		can2_motor[2].setspeed = 0;
-		can2_motor[3].setspeed = 0;
-		can2_motor[4].setspeed = 0;
-		can2_motor[5].setspeed = 0;
-		can2_motor[6].setspeed = 0;
-		DMmotor[0].setSpeed = 0;
-		DMmotor[1].setSpeed = 0;
-		DMmotor[2].setSpeed = 0;
+		for (uint8_t i = 0; i < 4; i++)
+		{
+			DMmotor[i].setSpeed = 2.5f;
+			DMmotor[i].SetTargetPos(0.0f);
+		}
+
 	}
 }
 

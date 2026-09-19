@@ -5,6 +5,25 @@
 
 #define now 0
 #define last 1
+
+uint32_t DMMOTOR::GetControlStdId() const
+{
+	switch (function)
+	{
+	case MIT:
+		return control_ID;
+
+	case P_S:
+		return 0x100 + control_ID;
+
+	case SPEED:
+		return 0x200 + control_ID;
+
+	default:
+		return control_ID;
+	}
+}
+
 void buffer_append_int32(uint8_t* buffer, int32_t number, int16_t* index) {
 	buffer[(*index)++] = number >> 24;
 	buffer[(*index)++] = number >> 16;
@@ -16,33 +35,34 @@ void buffer_append_int16(uint8_t* buffer, int16_t number, int16_t* index) {
 	buffer[(*index)++] = number;
 }
 
-DMMOTOR& DMMOTOR::State_Decode(CAN hcan, uint8_t idata[][8])//接收反馈数据
+DMMOTOR& DMMOTOR::State_Decode(CAN hcan, uint8_t idata[][8],uint8_t index)//接收反馈数据
 {
 	//浮点型数据
 	//receive_data[0]=电机id
-	uint8_t id = ID - 0x01;
 	int direct = 0;
 	int tmp_value = 0;
-	tmp_value = (idata[id][1] << 8) | (idata[id][2]);//电机位置
+	tmp_value = (idata[index][1] << 8) | (idata[index][2]);//电机位置
 	pos = uint_to_float(tmp_value, P_MIN, P_MAX, 16);//浮点型
-	tmp_value = (idata[id][3] << 4) | (idata[id][4] >> 4);//转速
+	tmp_value = (idata[index][3] << 4) | (idata[index][4] >> 4);//转速
 	curSpeed = uint_to_float(tmp_value, V_MIN, V_MAX, 12);//转浮点型
-	tmp_value = (idata[id][5]) | ((idata[id][4] & 0x0f) << 8);
+	tmp_value = (idata[index][5]) | ((idata[index][4] & 0x0f) << 8);
 	current = uint_to_float(tmp_value, C_MIN, C_MAX, 12);
 	torque = current * KT;//（力矩=电流*转矩常数，本产品转矩常数为 1.4Nm/A）
+
+	return *this;
 }
 
 
-void DMMOTOR::DMmotor_transmit(uint32_t id)
+void DMMOTOR::DMmotor_transmit(uint32_t index)
 {
 	//CanComm_ControlCmd(can1, CMD_RESET_MODE, id + MOTOR_MODE);//电机失力
-	can2.Transmit(id + MOTOR_MODE, can2.jointpdata[id - 1], 8);
+	can1.Transmit(GetControlStdId(), can1.jointpdata[index], 8);
 }
 
 void DMMOTOR::DMmotorinit()
 {
-	CanComm_ControlCmd(can2, CMD_MOTOR_MODE, MOTOR_MODE + 1);
-	delay.delay_ms(1);
+		CanComm_ControlCmd(can1, CMD_MOTOR_MODE, GetControlStdId());
+	
 }
 
 void DMMOTOR::SetTorque(float settorque)
@@ -106,11 +126,57 @@ int DMMOTOR::float_to_uint(float x, float x_min, float x_max, int bits)
 	return (int)((x - offset) * ((float)((1 << bits) - 1)) / span);
 }
 
+void DMMOTOR::SetTargetPos(float target)//电机限幅
+{
+	if (target < pos_min)
+		target = pos_min;
+
+	if (target > pos_max)
+		target = pos_max;
+
+	targetPos = target;
+}
+
+void DMMOTOR::UpdateTargetPos(float step)
+{
+	
+
+	// 目标仍然限制在机械范围内
+	if (targetPos < pos_min)
+		targetPos = pos_min;
+
+	if (targetPos > pos_max)
+		targetPos = pos_max;
+
+	// 目标逐渐增大
+	if (targetPos > setPos)
+	{
+		setPos += step;
+
+		if (setPos > targetPos)
+			setPos = targetPos;
+	}
+	// 目标逐渐减小
+	else if (targetPos < setPos)
+	{
+		setPos -= step;
+
+		if (setPos < targetPos)
+			setPos = targetPos;
+	}
+
+	// 最终限幅
+	if (setPos < pos_min)
+		setPos = pos_min;
+
+	if (setPos > pos_max)
+		setPos = pos_max;
+}
+
 void DMMOTOR::DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata)
 {
 	unsigned char* P = (unsigned char*)&setPos; // 定义一个无符号字符型指针p并指向f的地址
 	unsigned char* V = (unsigned char*)&setSpeed; // 定义一个无符号字符型指针p并指向f的地址
-	uint8_t id = ID - 0x01;
 	uint32_t p = 0, v = 0, kp = 0, kd = 0, t = 0;//位置给定，速度给定，位置比例系数，位置微分系数，转矩给定值
 	/* 限制输入的参数在定义的范围内 */
 	LIMIT_MIN_MAX(setPos, P_MIN, P_MAX);
@@ -118,9 +184,22 @@ void DMMOTOR::DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata)
 	LIMIT_MIN_MAX(f_kp, KP_MIN, KP_MAX);
 	LIMIT_MIN_MAX(f_kd, KD_MIN, KD_MAX);
 	LIMIT_MIN_MAX(setTorque, T_MIN, T_MAX);
-	switch (MOTOR_MODE)
+
+	if (setPos < pos_min)
+		setPos = pos_min;
+
+	if (setPos > pos_max)
+		setPos = pos_max;
+
+	if (setPos < P_MIN)
+		setPos = P_MIN;
+
+	if (setPos > P_MAX)
+		setPos = P_MAX;
+
+	switch (function)
 	{
-	case 0x00:
+	case MIT:
 		/* 根据协议，对float参数进行转换 */
 		p = float_to_uint(setPos, P_MIN, P_MAX, 16);//位置两个字节
 		v = float_to_uint(setSpeed, V_MIN, V_MAX, 12);//速度12位
@@ -139,7 +218,7 @@ void DMMOTOR::DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata)
 		odata[7] = t & 0xff;
 		break;
 
-	case 0x100:
+	case P_S:
 		odata[0] = P[0];
 		odata[1] = P[1];
 		odata[2] = P[2];
@@ -163,7 +242,7 @@ void DMMOTOR::DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata)
 		//odata[id][7] = (v >>24) & 0xff;
 		break;
 
-	case 0x200:
+	case SPEED:
 		break;
 
 	default:

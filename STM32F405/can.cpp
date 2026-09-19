@@ -1,6 +1,7 @@
 #include "can.h"
 #include "label.h"
 #include "string.h"
+#include "HTmotor.h"
 
 /*
 * @brief		CAN通信初始化函数
@@ -134,25 +135,77 @@ HAL_StatusTypeDef CAN::Transmit(const uint32_t ID, const uint8_t* const pData, c
 */
 void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 {
+	uint32_t rx_id = hcan->pRxMsg->StdId;
+
 	if (hcan == &can1.hcan)
-		memcpy(can1.data[hcan->pRxMsg->StdId - 0x201], hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
-	else
 	{
-		if (hcan->pRxMsg->StdId == 1)
+		bool is_dm_motor = false;
+
+		// 先匹配达妙反馈 ID
+		for (uint8_t i = 0; i < DMMOTOR_NUM; i++)
 		{
-			memcpy(can2.jointidata, hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
+			if (rx_id == DMmotor[i].master_ID)
+			{
+				memcpy(
+					can1.jointidata[i],
+					hcan->pRxMsg->Data,
+					8
+				);
+
+				is_dm_motor = true;
+				break;
+			}
 		}
-		else
+
+		// 未匹配到达妙，再处理普通 DJI 电机
+		if (!is_dm_motor &&
+			rx_id >= 0x201 &&
+			rx_id <= 0x20C)
 		{
-			memcpy(can2.data[hcan->pRxMsg->StdId - 0x201], hcan->pRxMsg->Data, sizeof(uint8_t) * 8);
+			memcpy(
+				can1.data[rx_id - 0x201],
+				hcan->pRxMsg->Data,
+				8
+			);
+		}
+	}
+	else if (hcan == &can2.hcan)
+	{
+		bool is_dm_motor = false;
+
+		// CAN2 达妙电机反馈
+		for (uint8_t i = 0; i < DMMOTOR_NUM; i++)
+		{
+			if (rx_id == DMmotor[i].master_ID)
+			{
+				memcpy(
+					can2.jointidata[i],
+					hcan->pRxMsg->Data,
+					8
+				);
+
+				is_dm_motor = true;
+				break;
+			}
+		}
+
+		// CAN2 普通 DJI 电机反馈
+		if (!is_dm_motor &&
+			rx_id >= 0x201 &&
+			rx_id <= 0x20C)
+		{
+			memcpy(
+				can2.data[rx_id - 0x201],
+				hcan->pRxMsg->Data,
+				8
+			);
 		}
 	}
 
-	//can2.pd_Rx = xQueueSendFromISR((QueueHandle_t)Can2QueueHadle, hcan->pRxMsg->Data, NULL);
-
-/*#### add enable can it again to solve can receive only one ID problem!!!####**/
 	__HAL_CAN_ENABLE_IT(hcan, CAN_IT_FMP0);
 }
+
+
 
 extern "C" void CAN1_TX_IRQHandler()
 {

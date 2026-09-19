@@ -11,12 +11,12 @@ constexpr auto MINHIGH = 0.133;
 constexpr auto MAXROLL = 15;//轮腿ROLL范围限制
 #define INIT_ANGLE_F 3.979350f//3.595378198//180+26 3.665191429
 //#define INIT_ANGLE_B -0.802851442f//-0.48869218//-22° -0.3839724;-0.523598775598//-30°//1.25423324
+#define DMMOTOR_NUM 6 
 #define INIT_ANGLE_B -0.884955f
 #define CMD_MOTOR_MODE      0x01
 #define CMD_RESET_MODE      0x02
 #define CMD_ZERO_POSITION   0x03
 #define CMD_CLEAR_MODE      0x04
-#define MOTOR_MODE			0x100
 #define P_MIN -4*PI    // Radians
 #define P_MAX 4*PI        
 #define V_MIN -10    // Rad/s
@@ -33,9 +33,10 @@ constexpr auto MAXROLL = 15;//轮腿ROLL范围限制
 
 
 
+
 #define KT 1.4f
-enum { DM_ID1 = 0x01, DM_ID2, DM_ID3, DM_ID4, DM_ID5 };
-enum  POSITION { L_F, L_B, R_F, R_B, F_B };
+enum { DM_ID1 = 0x01, DM_ID2, DM_ID3, DM_ID4, DM_ID5,DM_ID6 };
+enum  POSITION { L_F, L_B, R_F, R_B,YAW,PITCH };
 enum  FUCTION_MODE { MIT, SPEED, P_S };
 typedef enum {
 	CAN_PACKET_SET_DUTY = 0, //占空比模式
@@ -50,7 +51,9 @@ typedef enum {
 class DMMOTOR
 {
 public:
-	uint32_t ID;
+	uint32_t control_ID;
+	uint32_t master_ID;
+
 	FUCTION_MODE function;
 	POSITION position;
 
@@ -61,8 +64,14 @@ public:
 	float torque, setTorque;
 	float Kp = 10.f;
 	float Kd = 0.6f;
+	float pos_min;
+	float pos_max;
+
+	float targetPos{};          // 外部请求的目标位置
+	
 
 	float uint_to_float(int x_int, float x_min, float x_max, int bits);//计算用函数
+	uint32_t GetControlStdId() const;
 	int float_to_uint(float x, float x_min, float x_max, int bits);
 
 	void  CanComm_ControlCmd(CAN hcan, uint8_t cmd, uint32_t id);//电机模式设置
@@ -74,9 +83,12 @@ public:
 	//启动电机会设置电机模式并零位校准
 	void  Motor_Stop(CAN hcan, uint32_t id);//电机失力
 
-	DMMOTOR& State_Decode(CAN hcan, uint8_t odata[][8]);//解码并接收数据
+	DMMOTOR& State_Decode(CAN hcan, uint8_t odata[][8], uint8_t index);//解码并接收数据
 	void DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata);//电流计算，不包括发送
-	void DMmotor_transmit(uint32_t id);//使能并发送控制数据
+	void DMmotor_transmit(uint32_t index);//使能并发送控制数据
+
+	void SetTargetPos(float target);
+	void UpdateTargetPos(float step);//电机限幅
 
 	void SetTorque(float settorque);
 	float GetPosition();
@@ -85,8 +97,24 @@ public:
 
 	//都是对单个电机进行控制，要有ID 
 
-	DMMOTOR(const uint32_t ID, FUCTION_MODE function, POSITION position) :ID(ID), function(function), position(position) {};//定义接口
+	DMMOTOR(
+		uint32_t control_ID,
+		uint32_t master_ID, 
+		FUCTION_MODE function, 
+		POSITION position,
+		float pos_min,
+		float pos_max
+	)
+		:control_ID(control_ID),
+		master_ID(master_ID),
+		function(function),
+		position(position),
+		pos_min(pos_min),
+		pos_max(pos_max)
+	{};//定义接口
 
 };
 
-extern DMMOTOR DMmotor[3];
+
+
+extern DMMOTOR DMmotor[DMMOTOR_NUM];
