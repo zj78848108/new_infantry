@@ -107,7 +107,7 @@
     <DebugMethod>
       <ID>com.sysprogs.arm.openocd</ID>
       <Configuration xsi:type="com.visualgdb.edp.openocd.settings">
-        <CommandLine>-f interface/cmsis-dap.cfg -c "adapter speed 3000" -f target/stm32f4x.cfg -c init -c "reset init"</CommandLine>
+        <CommandLine>-f interface/cmsis-dap.cfg -c "transport select swd" -c "adapter speed 3000" -f target/stm32f4x.cfg -c init -c "reset init"</CommandLine>
         <ExtraParameters>
           <Frequency xsi:nil="true" />
           <BoostedFrequency xsi:nil="true" />

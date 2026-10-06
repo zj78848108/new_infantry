@@ -2,6 +2,7 @@
 #include "RC.h"
 #include "control.h"
 #include "HTmotor.h"
+#include "imu.h"
 
 namespace
 {
@@ -21,7 +22,6 @@ namespace
 
 	constexpr float AUTO_UP_EPS = 0.1f;
 }
-
 
 void RC::Init(UART* huart, USART_TypeDef* Instance, const uint32_t BaudRate)
 {
@@ -123,20 +123,52 @@ void RC::RC_Control() {
 			break;
 
 		case CONTROL::FOLLOW:
+		{
+			for (uint8_t i = 0; i < 4; i++)
+			{
+				DMmotor[i].setSpeed = 5.0f;
+				DMmotor[i].SetTargetPos(0.0f);
+			}
+
+			DMmotor[YAW].setSpeed = 5.0f;
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
+
+			ctrl.chassis.Keep_Direction(rc.ch[3] * 1500.f / 660.f,
+				rc.ch[2] * 1500.f / 660.f);
+			ctrl.chassis.speedz = 0.0f;
 
 			break;
+		}
 
 		case CONTROL::SEPARATE:
+		{
+
+			for (uint8_t i = 0; i < 4; i++)
+			{
+				DMmotor[i].setSpeed = 5.0f;
+				DMmotor[i].SetTargetPos(0.0f);
+			}
+
+			ctrl.chassis.speedx = rc.ch[3] * 1500.f / 660.f;
+			ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
+			ctrl.chassis.speedz = 0.0f;
+
+			DMmotor[YAW].setSpeed = 5.0f;
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
 
 			break;
+		}
 
 		case CONTROL::AUTOAIM:
 
 			break;
 
 		case CONTROL::FIRE:
-	
+		{
+
+
 			break;
+		}
 
 		case CONTROL::STOP:
 			
@@ -165,14 +197,6 @@ void RC::RC_Control() {
 
 		case CONTROL::AUTO_UP:
 		{
-			const float target[4] =
-			{
-				2.5f,
-			   -6.0f,
-			   -2.5f,
-				6.0f
-			};
-
 			for (uint8_t i = 0; i < 4; i++)
 			{
 				DMmotor[i].setSpeed =
@@ -262,13 +286,10 @@ void RC::RC_Control() {
 
 			case AUTO_UP_PHASE::RETURN_ZERO:
 			{
-				DMmotor[0].setSpeed = 3.5f;
-				DMmotor[1].setSpeed = 5.0f;
-				DMmotor[2].setSpeed = 3.5f;
-				DMmotor[3].setSpeed = 5.0f;
-				
 				for (uint8_t i = 0; i < 4; i++)
 				{
+					DMmotor[i].setSpeed =
+						(i == 1 || i == 3) ? 5.0f : 3.5f;
 					DMmotor[i].SetTargetPos(0.0f);
 				}
 
@@ -309,6 +330,7 @@ void RC::RC_Control() {
 		}
 
 		case CONTROL::CHASSIS_MOVE:
+		{
 			DMmotor[0].setSpeed = 2.5f;
 			DMmotor[1].setSpeed = 2.5f;
 			DMmotor[2].setSpeed = 2.5f;
@@ -317,6 +339,8 @@ void RC::RC_Control() {
 			ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
 			ctrl.chassis.speedz = rc.ch[0] * 700.f / 660.f;
 			break;
+		}
+
 		case CONTROL::UP_STAIRS:
 		{
 			DMmotor[0].setSpeed = 5.0f;

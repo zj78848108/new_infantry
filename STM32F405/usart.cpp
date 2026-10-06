@@ -454,12 +454,12 @@ void UART::OnUARTITHandler(void)
 	if (__HAL_UART_GET_FLAG(&huart, UART_FLAG_IDLE) && __HAL_UART_GET_IT_SOURCE(&huart, UART_IT_IDLE))
 	{
 		__HAL_UART_CLEAR_IDLEFLAG(&huart);
+		dataDmaNum = UART_MAX_LEN - __HAL_DMA_GET_COUNTER(huart.hdmarx);   // œ»∂¡£°
 		__HAL_DMA_DISABLE(huart.hdmarx);
 
 		pd_Rx = xQueueOverwriteFromISR((QueueHandle_t)UartQueueHandler, m_uartrx, NULL);
 
 		DMAClearAllFlags(huart.hdmarx);
-
 		__HAL_DMA_SET_COUNTER(huart.hdmarx, UART_MAX_LEN);
 		__HAL_DMA_ENABLE(huart.hdmarx);
 	}

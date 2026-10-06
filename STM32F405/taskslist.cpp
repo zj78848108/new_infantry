@@ -13,6 +13,7 @@
 extern float Kp = 10;
 extern float Kd = 0.6;
 extern int start_flag;
+extern void Chassis_UpdateGimbalYaw(float yaw_rad, bool fresh);
 void TASK::Init()
 {
 	//创建开始任务
@@ -85,16 +86,17 @@ void MotorUpdateTask(void* pvParameters)
 
 		for (uint8_t i = 0; i < DMMOTOR_NUM; i++)
 		{
-			DMmotor[i]
-				.State_Decode(can1, can1.jointidata, i);
+			CAN& bus = *DMmotor[i].bus;
+
+			DMmotor[i].State_Decode(bus, bus.jointidata, i);
 
 			DMmotor[i].UpdateTargetPos(0.01f);
 
 			DMmotor[i].DMmotor_Ontimer(
-				can1,
+				bus,
 				DMmotor[i].Kp,
 				DMmotor[i].Kd,
-				can1.jointpdata[i]
+				bus.jointpdata[i]
 			);
 		}
 
@@ -151,11 +153,16 @@ void DecodeTask(void* pvParameters)
 {
 	while (true)
 	{
+		TickType_t xlastWakeTime = xTaskGetTickCount();
+
 		rc.Decode();
 
 		imu_pantile.Decode();
-	
-		vTaskDelay(5);
+
+		// 把最新 yaw 交给底盘（Fresh 为 false 时底盘退化成车体坐标）
+		Chassis_UpdateGimbalYaw(imu_pantile.GetAngleYaw(), imu_pantile.Fresh(100));
+
+		vTaskDelayUntil(&xlastWakeTime, pdMS_TO_TICKS(2));
 	}
 }
 

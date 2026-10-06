@@ -21,8 +21,15 @@ public:
 
 		PID chassis_reset{};
 		int32_t speedx{}, speedy{}, speedz{};
-		
+
+		//   → IMU 的 x/y 轴与底盘本体系（前/左）完全对齐
+		bool  keep_dir_enable = true;
+		float gimbal_yaw_sign = +1.f;  // 逆时针转 yaw_raw 增大 → +1；减小 → -1
+		float mount_offset_deg = 0.f;   // IMU z 轴装偏补偿，本装法为 0
+		float keep_dir_gain = 1.f;
+
 		void Keep_Direction();
+		void Keep_Direction(float vx_in, float vy_in);
 
 		void Update();
 		float Ramp(float setval, float curval, uint32_t RampSlope);
@@ -67,3 +74,5 @@ private:
 };
 
 extern CONTROL ctrl;
+
+void Chassis_UpdateGimbalYaw(float yaw_rad, bool fresh);

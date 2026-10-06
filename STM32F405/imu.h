@@ -19,12 +19,22 @@ public:
 
 	void Init(UART* huart, USART_TypeDef* Instance, const uint32_t BaudRate, IMU_TYPE type);
 	void Decode();
-	bool Check(uint8_t* pdata, uint8_t len, uint32_t com);
+	bool Check(uint8_t* pdata, uint16_t len, uint32_t com);
 	float GetAngleYaw();
 	float GetAnglePitch();
 	float GetAngleRoll();
 	float getangularvelocitypitch();
-	float* GetAcceleration();
+	void GetAcceleration(float out[3]) const;
+
+	bool  Fresh(uint32_t timeout_ms = 100) const;
+	uint32_t FrameCount() const { return m_frame_count; }
+	uint32_t ErrCount()  const { return m_err_count; }
+	Angle LatestAngle()  const { return m_latest; }
+
+	void  SetYawZero(float rad) { m_yaw_zero = rad; }
+	void  SetYawZero() { m_yaw_zero = m_latest.yaw; }
+	float GetYawRad()           const { return m_latest.yaw - m_yaw_zero; }
+
 	int16_t getword(uint8_t HighBit, uint8_t LowBits);
 
 	BaseType_t pd_Rx = false;
@@ -33,8 +43,20 @@ private:
 	Angle angle;
 	AngularVelocity angularvelocity;
 	Acceleration acceleration;
-	uint16_t crc, len;
+	uint16_t crc = 0, len;
+
+	volatile uint16_t crc_calc = 0;
+	volatile uint16_t crc_recv = 0;
+
 	IMU_TYPE type;
+
+	volatile uint32_t dataDmaNum;
+
+	Angle    m_latest{};
+	float    m_yaw_zero = 0.f;
+	volatile uint32_t m_frame_count = 0;
+	volatile uint32_t m_err_count = 0;
+	volatile uint32_t m_last_ms = 0;
 
 	uint8_t rxData[UART_MAX_LEN];
 	UART* m_uart;
