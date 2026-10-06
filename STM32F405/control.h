@@ -51,12 +51,28 @@ public:
 
 		float now_bullet_speed = 0.f;
 
+		int16_t rub_speed = 3000;  // 摩擦轮转子目标转速(rpm)，按实测调
+		int16_t supply_speed = 100;  // 拨弹轮目标转速(rpm)
+		uint8_t fire_rate = 8;     // 连发射频 Hz（配合 motor.spinning）
+
 		bool auto_shoot = false;
 		bool openRub = false, supply_bullet = false;
 		bool fraction = false;
 		bool fullheat_shoot = false;
 		bool heat_ulimit = false;
 		int16_t shoot_speed = 6000;
+
+		bool    flag = false;
+
+		float   bullets_per_rev = 9.f;   // 拨弹盘转一圈出弹数
+		float   dial_gear_ratio = 36.f;  // 拨弹盘转一圈 = 转子转多少圈（M2006自带36:1，拨弹盘1:1接输出轴时=36）
+		int16_t feed_speed = 500;        // 补一发时的转子转速(rpm)
+		int32_t feed_tol = 300;        // 到位判据(counts)，取步长的 1/100 左右
+
+		bool    feed_last_trig = false;  // 上一周期扳机状态（做上升沿）
+		bool    feeding = false;  // 正在补一发
+		int32_t feed_target = 0;      // 目标 sum_angle
+
 		void Update();
 	};
 

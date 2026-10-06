@@ -11,3 +11,7 @@
 2026-09-19
 
 新增AUTO_UP模式，实现自动上台阶
+
+2026-10-06
+
+新增FOLLOW、SEPARATE模式，但pitch轴还未写，follow模式测试中

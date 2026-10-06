@@ -165,7 +165,19 @@ void RC::RC_Control() {
 
 		case CONTROL::FIRE:
 		{
+			ctrl.shooter.openRub = true;                    // 进 fire 就开摩擦轮
+			ctrl.shooter.flag = true;                       // 进入fire为单发
+			ctrl.shooter.supply_bullet = (rc.ch[1] > 400);  // 右摇杆上推=拨弹
 
+			ctrl.chassis.speedx = 0;
+			ctrl.chassis.speedy = 0;
+			ctrl.chassis.speedz = 0;
+
+			DMmotor[YAW].setSpeed = 5.0f;
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
+
+			DMmotor[PITCH].setSpeed = 5.0f;
+			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[2] / 660.0f * 0.01f);
 
 			break;
 		}
@@ -176,24 +188,23 @@ void RC::RC_Control() {
 			break;
 
 		case CONTROL::SPINNING:
+		{
+			ctrl.shooter.openRub = true;                    // 进 fire 就开摩擦轮
+			ctrl.shooter.flag = false;                       // 进入spinning为连发
+			ctrl.shooter.supply_bullet = (rc.ch[1] > 400);  // 右摇杆上推=拨弹
+
+			ctrl.chassis.speedx = 0;
+			ctrl.chassis.speedy = 0;
+			ctrl.chassis.speedz = 0;
+
+			DMmotor[YAW].setSpeed = 5.0f;
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
+
+			DMmotor[PITCH].setSpeed = 5.0f;
+			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[2] / 660.0f * 0.01f);
 
 			break;
-		/*case CONTROL::AUTO_UP:
-			DMmotor[0].setSpeed = 2.5f;
-			DMmotor[1].setSpeed = 4.0f;
-			DMmotor[2].setSpeed = 2.5f;
-			DMmotor[3].setSpeed = 4.0f;
-
-			ctrl.chassis.speedx = 700.0f;
-
-			DMmotor[0].SetTargetPos(2.5f);
-			DMmotor[1].SetTargetPos(-6.0f);
-			DMmotor[2].SetTargetPos(-2.5f);
-			DMmotor[3].SetTargetPos(6.0f);
-
-
-
-			break;*/
+		}
 
 		case CONTROL::AUTO_UP:
 		{

@@ -64,9 +64,11 @@ void CONTROL::Init(std::vector<Motor*> motor)
 			shooter_motor[num3++] = motor[i];
 			break;
 		case(function_type::supply):
+			supply_motor[num4] = motor[i];
 			supply_motor[num4]->spinning = false;
 			supply_motor[num4]->need_curcircle = false;
-			supply_motor[num4++] = motor[i];
+			num4++;
+			break;
 		default:
 			break;
 		}
@@ -130,7 +132,58 @@ void CONTROL::PANTILE::Update()
 
 void CONTROL::SHOOTER::Update()
 {
-	
+	const bool shooting = (ctrl.mode == CONTROL::FIRE || ctrl.mode == CONTROL::SPINNING);
+
+	// 两个摩擦轮：进 fire 模式且 openRub 才转，离开立刻停
+	const int16_t sp = (shooting) ? rub_speed : 0;
+	for (uint8_t i = 0; i < SHOOTER_MOTOR_NUM; i++)
+		if (ctrl.shooter_motor[i] != nullptr)
+			ctrl.shooter_motor[i]->setspeed = (i == 1) ? -sp : sp;  // 对装反向时取负
+
+	if (ctrl.shooter.flag) {
+		Motor* const sm = ctrl.supply_motor[0];
+		if (sm != nullptr)
+		{
+			// 每颗弹的转子编码器步长 = 8192(转子一圈) × 减速比 ÷ 一圈弹数
+			const int32_t step = static_cast<int32_t>(
+				8192.f * dial_gear_ratio / bullets_per_rev + 0.5f);
+
+			const bool trig = shooting && supply_bullet;
+
+			if (!shooting)
+			{
+				feeding = false;
+				feed_last_trig = false;
+				sm->setspeed = 0;
+			}
+			else
+			{
+				if (trig && !feed_last_trig)      // 扳机上升沿 → 只排一发
+					feed_target = sm->sum_angle + step, feeding = true;
+
+				feed_last_trig = trig;
+
+				if (feeding)
+				{
+					const int32_t err = feed_target - sm->sum_angle;
+					if (err <= feed_tol && err >= -feed_tol)   // 到位
+					{
+						feeding = false;
+						sm->setspeed = 0;
+					}
+					else
+						sm->setspeed = (err > 0) ? feed_speed : -feed_speed;
+				}
+				else
+					sm->setspeed = 0;
+			}
+		}
+	}
+	else {
+		// 拨弹轮：进 fire 模式且 supply_bullet 才转，离开立刻停
+		if (ctrl.supply_motor[0] != nullptr)
+			ctrl.supply_motor[0]->setspeed = (shooting && supply_bullet) ? supply_speed : 0;
+	}
 }
 
 float CONTROL::CHASSIS::Ramp(float setval, float curval, uint32_t RampSlope)
