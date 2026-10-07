@@ -131,6 +131,7 @@ void RC::RC_Control() {
 			}
 
 			DMmotor[YAW].setSpeed = 5.0f;
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
 
 			ctrl.chassis.Keep_Direction(rc.ch[3] * 1500.f / 660.f,
@@ -154,7 +155,11 @@ void RC::RC_Control() {
 			ctrl.chassis.speedz = 0.0f;
 
 			DMmotor[YAW].setSpeed = 5.0f;
+
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
+
+			DMmotor[PITCH].setSpeed = 5.0f;
+			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[1] / 660.0f * 0.01f);
 
 			break;
 		}
@@ -174,6 +179,7 @@ void RC::RC_Control() {
 			ctrl.chassis.speedz = 0;
 
 			DMmotor[YAW].setSpeed = 5.0f;
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
 
 			DMmotor[PITCH].setSpeed = 5.0f;
@@ -183,7 +189,7 @@ void RC::RC_Control() {
 		}
 
 		case CONTROL::STOP:
-			
+
 
 			break;
 
@@ -198,6 +204,7 @@ void RC::RC_Control() {
 			ctrl.chassis.speedz = 0;
 
 			DMmotor[YAW].setSpeed = 5.0f;
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
 
 			DMmotor[PITCH].setSpeed = 5.0f;
@@ -297,10 +304,15 @@ void RC::RC_Control() {
 
 			case AUTO_UP_PHASE::RETURN_ZERO:
 			{
+				DMmotor[0].setSpeed = 3.5f;
+				DMmotor[1].setSpeed = 5.0f;
+				DMmotor[2].setSpeed = 3.5f;
+				DMmotor[3].setSpeed = 5.0f;
+
+				ctrl.chassis.speedx = 1100.0f;
+
 				for (uint8_t i = 0; i < 4; i++)
 				{
-					DMmotor[i].setSpeed =
-						(i == 1 || i == 3) ? 5.0f : 3.5f;
 					DMmotor[i].SetTargetPos(0.0f);
 				}
 
@@ -380,9 +392,9 @@ void RC::RC_Control() {
 				DMmotor[3].targetPos + delta2
 			);
 			ctrl.chassis.speedx = rc.ch[2] * 1500.f / 660.f;
-			
+
 			ctrl.chassis.speedz = rc.ch[0] * 700.0f / 660.f;
-			
+
 			break;
 		}
 		default:

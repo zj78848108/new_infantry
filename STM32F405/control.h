@@ -51,8 +51,8 @@ public:
 
 		float now_bullet_speed = 0.f;
 
-		int16_t rub_speed = 3000;  // 摩擦轮转子目标转速(rpm)，按实测调
-		int16_t supply_speed = 100;  // 拨弹轮目标转速(rpm)
+		int16_t rub_speed = 1500;  // 摩擦轮转子目标转速(rpm)，按实测调
+		int16_t supply_speed = 2500;  // 拨弹轮目标转速(rpm)
 		uint8_t fire_rate = 8;     // 连发射频 Hz（配合 motor.spinning）
 
 		bool auto_shoot = false;
@@ -60,7 +60,7 @@ public:
 		bool fraction = false;
 		bool fullheat_shoot = false;
 		bool heat_ulimit = false;
-		int16_t shoot_speed = 6000;
+		int16_t shoot_speed = 100;
 
 		bool    flag = false;
 
