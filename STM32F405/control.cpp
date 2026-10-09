@@ -64,7 +64,17 @@ void CONTROL::PANTILE::Update()
 
 void CONTROL::SHOOTER::Update()
 {
-	
+	int16_t shooter_speed = 1500;
+	if(ctrl.mode == CONTROL::FIRE || ctrl.mode == CONTROL::SPINNING)
+	{
+		ctrl.shooter_motor[0]->setspeed = shooter_speed;
+		ctrl.shooter_motor[1]->setspeed = -shooter_speed;
+	}
+	else
+	{
+		ctrl.shooter_motor[0]->setspeed = 0;
+		ctrl.shooter_motor[1]->setspeed = 0;
+	}
 }
 
 float CONTROL::CHASSIS::Ramp(float setval, float curval, uint32_t RampSlope)

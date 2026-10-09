@@ -33,24 +33,24 @@ Motor can1_motor[CAN1_MOTOR_NUM] = {
 	Motor(M3508,SPD,chassis, ID2, PID(2.0f, 0.0f, 0.5f,0.f)),
 	Motor(M3508,SPD,chassis, ID3, PID(2.0f, 0.0f, 0.5f,0.f)),
 	Motor(M3508,SPD,chassis, ID4, PID(2.0f, 0.0f, 0.5f,0.f)),
-	Motor(M6020,POS,pantile, ID6, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,SPD,chassis, ID8, PID(10.f, 0.0f, 1.5f,0.f))
+	Motor(M6020,POS,pantile, ID6, PID(0.0f, 0.0f, 1.5f,0.f),PID(0.0f, 0.005f, 15.0f,0.f)),
+	Motor(M6020,SPD,chassis, ID8, PID(0.0f, 0.0f, 1.5f,0.f))
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
-	Motor(M3508,SPD,chassis, ID1, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M2006,SPD,chassis, ID2, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M6020,POS,pantile, ID3, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,POS,pantile, ID4, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,POS,pantile, ID7, PID(40.f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
-	Motor(M6020,SPD,chassis, ID8, PID(10.f, 0.0f, 1.5f,0.f))
+	Motor(M3508,SPD,shooter, ID4, PID(10.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID5, PID(10.f, 0.0f, 1.5f,0.f)),
+	Motor(M2006,SPD,supply, ID6, PID(0.02f, 0.0f, 0.0f,0.f)),
+	Motor(M6020,POS,pantile, ID1, PID(0.0f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
+	Motor(M6020,POS,pantile, ID7, PID(0.0f, 0.0f, 1.5f,0.f),PID(0.8f, 0.005f, 15.0f,0.f)),
+	Motor(M6020,SPD,chassis, ID8, PID(0.0f, 0.0f, 1.5f,0.f))
 };
 DMMOTOR DMmotor[DMMOTOR_NUM] = {
 	DMMOTOR(0x07,0x02, P_S, L_F, -2.0, 6.5),
-	DMMOTOR(0x06,0x01, P_S, L_B, -8.0, 1.5),
+	DMMOTOR(0x06,0x01, P_S, L_B, -6.5, 2.0),
 	DMMOTOR(0x08,0x03, P_S, R_F, -6.5, 2.0),
 	DMMOTOR(0x01,0x00, P_S, R_B, -2.0, 6.5),
-	DMMOTOR(0x02,0x04 ,P_S, YAW, -0.1, 0.1),
-	DMMOTOR(0x03,0x05, P_S, PITCH,-0.1, 0.1)
+	DMMOTOR(0x09,0x04 ,P_S, YAW, -3.14, 3.14),
+	DMMOTOR(0x05,0x05, P_S, PITCH,-0.34, 0.34)
 };//只有can1
 
 
@@ -66,6 +66,7 @@ TASK task;
 CONTROL ctrl;
 Judgement judgement;
 PARAMETER para;
+XUC xuc;
 
 
 int main(void)
@@ -78,9 +79,10 @@ int main(void)
 	can2.Init(CAN2);
 	timer.Init(BASE, TIM3, 1000).BaseInit();
 
-	imu_pantile.Init(&uart1, USART1, 115200, CH010);
+	imu_pantile.Init(&uart3, USART3, 115200, CH010);
 	rc.Init(&uart2, USART2, 100000);
 	power.Init(&uart5,UART5,9600);
+xuc.Init(&uart6, USART6, 460800);
 	
 
 	para.Init();

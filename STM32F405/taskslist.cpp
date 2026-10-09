@@ -10,6 +10,7 @@
 #include "delay.h"
 #include "HTmotor.h"
 #include "Power_read.h"
+#include "xuc.h"
 extern float Kp = 10;
 extern float Kd = 0.6;
 extern int start_flag;
@@ -140,8 +141,9 @@ void ControlTask(void* pvParameters)
 	{
 		ctrl.chassis.Update();
 		//ctrl.pantile.Update();
-		//ctrl.shooter.Update();
+		ctrl.shooter.Update();
 		rc.Update();
+xuc.Encode();
 		vTaskDelay(5);
 	}
 }
@@ -152,6 +154,7 @@ void DecodeTask(void* pvParameters)
 	while (true)
 	{
 		rc.Decode();
+xuc.Decode();
 
 		imu_pantile.Decode();
 	
