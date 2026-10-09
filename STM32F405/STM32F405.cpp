@@ -36,17 +36,17 @@ Motor can1_motor[CAN1_MOTOR_NUM] = {
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
 	Motor(M3508,SPD,shooter, ID4, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M3508,SPD,shooter, ID5, PID(10.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID3, PID(10.f, 0.0f, 1.5f,0.f)),
 	Motor(M2006,SPD,supply, ID6, PID(0.02f, 0.0f, 0.0f,0.f))
 };
 DMMOTOR DMmotor[DMMOTOR_NUM] = {
-	DMMOTOR(0x07,0x02, P_S, L_F, -2.0, 6.5, &can1),
-	DMMOTOR(0x06,0x01, P_S, L_B, -8.0, 1.5, &can1),
-	DMMOTOR(0x08,0x03, P_S, R_F, -6.5, 2.0, &can1),
-	DMMOTOR(0x01,0x00, P_S, R_B, -2.0, 6.5, &can1),
-	DMMOTOR(0x09,0x04 ,P_S, YAW, -3.14, 3.14, &can1),
-	DMMOTOR(0x05,0x05, P_S, PITCH,-0.38, 0.34, &can2)//上限0.34rad,下限-0.38rad
-};//履带与yaw接can1，pitch接can2
+	DMMOTOR(0x07,0x02, P_S, L_F, -2.0, 6.5 ),
+	DMMOTOR(0x06,0x01, P_S, L_B, -6.5, 2.0),
+	DMMOTOR(0x08,0x03, P_S, R_F, -6.5, 2.0),
+	DMMOTOR(0x01,0x00, P_S, R_B, -2.0, 6.5),
+	DMMOTOR(0x09,0x04 ,P_S, YAW, -3.14, 3.14),
+	DMMOTOR(0x05,0x05, P_S, PITCH,-0.38, 0.34)
+};
 
 
 CAN can1, can2;
@@ -81,13 +81,21 @@ int main(void)
 	para.Init();
 
 	ctrl.Init(std::vector<Motor*>{
-		&can1_motor[0],
-		&can1_motor[1],
-		&can1_motor[2],
-		&can1_motor[3],
 		&can2_motor[0],
-		&can2_motor[1],
-		&can2_motor[2]
+			& can2_motor[1],
+			& can2_motor[2],
+			& can2_motor[3],
+			& can2_motor[4],
+			& can2_motor[5]
+	});
+	ctrl.Init(std::vector<Motor*>{
+		&can1_motor[0],
+			& can1_motor[1],
+			& can1_motor[2],
+			& can1_motor[3],
+			& can1_motor[4],
+			& can1_motor[5]
+
 	});
 
 	task.Init();

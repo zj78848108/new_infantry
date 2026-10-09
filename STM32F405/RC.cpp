@@ -131,7 +131,12 @@ void RC::RC_Control() {
 			}
 
 			DMmotor[YAW].setSpeed = 5.0f;
-			DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+
+			if (Shift_mode())
+			{
+				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+			}//只在切入模式时执行一次，防止电机突转
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
 
 			ctrl.chassis.Keep_Direction(rc.ch[3] * 1500.f / 660.f,
@@ -153,6 +158,12 @@ void RC::RC_Control() {
 			ctrl.chassis.speedx = rc.ch[3] * 1500.f / 660.f;
 			ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
 			ctrl.chassis.speedz = 0.0f;
+
+			if (Shift_mode())
+			{
+				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+			}//只在切入模式时执行一次，防止电机突转
 
 			DMmotor[YAW].setSpeed = 5.0f;
 
@@ -179,7 +190,13 @@ void RC::RC_Control() {
 			ctrl.chassis.speedz = 0;
 
 			DMmotor[YAW].setSpeed = 5.0f;
-			DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+
+			if (Shift_mode())
+			{
+				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+			}//只在切入模式时执行一次，防止电机突转
+
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
 
 			DMmotor[PITCH].setSpeed = 5.0f;
@@ -204,7 +221,13 @@ void RC::RC_Control() {
 			ctrl.chassis.speedz = 0;
 
 			DMmotor[YAW].setSpeed = 5.0f;
-			DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+
+			if (Shift_mode())
+			{
+				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+			}//只在切入模式时执行一次，防止电机突转
+
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
 
 			DMmotor[PITCH].setSpeed = 5.0f;

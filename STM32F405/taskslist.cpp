@@ -87,17 +87,16 @@ void MotorUpdateTask(void* pvParameters)
 
 		for (uint8_t i = 0; i < DMMOTOR_NUM; i++)
 		{
-			CAN& bus = *DMmotor[i].bus;
 
-			DMmotor[i].State_Decode(bus, bus.jointidata, i);
+			DMmotor[i].State_Decode(can1, can1.jointidata, i);
 
 			DMmotor[i].UpdateTargetPos(0.01f);
 
 			DMmotor[i].DMmotor_Ontimer(
-				bus,
+				can1,
 				DMmotor[i].Kp,
 				DMmotor[i].Kd,
-				bus.jointpdata[i]
+				can1.jointpdata[i]
 			);
 		}
 

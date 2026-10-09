@@ -52,7 +52,7 @@ void CAN::InitFilter()
 	CAN_FilterConfigStructure.FilterMaskIdLow = 0x0000;							//接收所有数据
 	CAN_FilterConfigStructure.FilterFIFOAssignment = CAN_FilterFIFO0;			//过滤器关联到FIFO0
 	CAN_FilterConfigStructure.FilterActivation = ENABLE;						//激活过滤器
-	CAN_FilterConfigStructure.BankNumber = 14;
+	CAN_FilterConfigStructure.BankNumber = 0;
 
 	HAL_CAN_ConfigFilter(&hcan, &CAN_FilterConfigStructure);
 
@@ -176,7 +176,7 @@ void HAL_CAN_RxCpltCallback(CAN_HandleTypeDef* hcan)
 		// CAN2 达妙电机反馈
 		for (uint8_t i = 0; i < DMMOTOR_NUM; i++)
 		{
-			if (DMmotor[i].bus == &can2 && rx_id == DMmotor[i].master_ID)
+			if (rx_id == DMmotor[i].master_ID)
 			{
 				memcpy(
 					can2.jointidata[i],

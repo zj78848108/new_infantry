@@ -53,7 +53,6 @@ class DMMOTOR
 public:
 	uint32_t control_ID;
 	uint32_t master_ID;
-	CAN* bus;
 
 	FUCTION_MODE function;
 	POSITION position;
@@ -75,7 +74,7 @@ public:
 	uint32_t GetControlStdId() const;
 	int float_to_uint(float x, float x_min, float x_max, int bits);
 
-	void  CanComm_ControlCmd(CAN& hcan, uint8_t cmd, uint32_t id);//电机模式设置
+	void  CanComm_ControlCmd(CAN hcan, uint8_t cmd, uint32_t id);//电机模式设置
 	void  ZeroPosition(CAN hcan, uint32_t id);//校准零位置
 
 	void  Motor_Start(CAN hcan, uint32_t id);
@@ -84,8 +83,8 @@ public:
 	//启动电机会设置电机模式并零位校准
 	void  Motor_Stop(CAN hcan, uint32_t id);//电机失力
 
-	DMMOTOR& State_Decode(CAN& hcan, uint8_t odata[][8], uint8_t index);//解码并接收数据
-	void DMmotor_Ontimer(CAN& hcan, float f_kp, float f_kd, uint8_t* odata);//电流计算，不包括发送
+	DMMOTOR& State_Decode(CAN hcan, uint8_t odata[][8], uint8_t index);//解码并接收数据
+	void DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata);//电流计算，不包括发送
 	void DMmotor_transmit(uint32_t index);//使能并发送控制数据
 
 	void SetTargetPos(float target);
@@ -104,12 +103,10 @@ public:
 		FUCTION_MODE function, 
 		POSITION position,
 		float pos_min,
-		float pos_max,
-		CAN* bus = &can1
+		float pos_max
 	)
 		:control_ID(control_ID),
 		master_ID(master_ID),
-		bus(bus),
 		function(function),
 		position(position),
 		pos_min(pos_min),

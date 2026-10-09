@@ -35,7 +35,7 @@ void buffer_append_int16(uint8_t* buffer, int16_t number, int16_t* index) {
 	buffer[(*index)++] = number;
 }
 
-DMMOTOR& DMMOTOR::State_Decode(CAN& hcan, uint8_t idata[][8],uint8_t index)//½ÓÊÕ·´À¡Êı¾İ
+DMMOTOR& DMMOTOR::State_Decode(CAN hcan, uint8_t idata[][8],uint8_t index)//½ÓÊÕ·´À¡Êı¾İ
 {
 	//¸¡µãĞÍÊı¾İ
 	//receive_data[0]=µç»úid
@@ -56,12 +56,12 @@ DMMOTOR& DMMOTOR::State_Decode(CAN& hcan, uint8_t idata[][8],uint8_t index)//½ÓÊ
 void DMMOTOR::DMmotor_transmit(uint32_t index)
 {
 	//CanComm_ControlCmd(can1, CMD_RESET_MODE, id + MOTOR_MODE);//µç»úÊ§Á¦
-	bus->Transmit(GetControlStdId(), bus->jointpdata[index], 8);
+	can1.Transmit(GetControlStdId(), can1.jointpdata[index], 8);
 }
 
 void DMMOTOR::DMmotorinit()
 {
-		CanComm_ControlCmd(*bus, CMD_MOTOR_MODE, GetControlStdId());
+		CanComm_ControlCmd(can1, CMD_MOTOR_MODE, GetControlStdId());
 	
 }
 
@@ -85,7 +85,7 @@ float DMMOTOR::GetTorque()
 	return torque;
 }
 
-void  DMMOTOR::CanComm_ControlCmd(CAN& hcan, uint8_t cmd, uint32_t id)//Ê¹ÄÜÖ¡
+void  DMMOTOR::CanComm_ControlCmd(CAN hcan, uint8_t cmd, uint32_t id)//Ê¹ÄÜÖ¡
 {
 	uint8_t buf[8] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x00 };
 	switch (cmd)
@@ -173,7 +173,7 @@ void DMMOTOR::UpdateTargetPos(float step)
 		setPos = pos_max;
 }
 
-void DMMOTOR::DMmotor_Ontimer(CAN& hcan, float f_kp, float f_kd, uint8_t* odata)
+void DMMOTOR::DMmotor_Ontimer(CAN hcan, float f_kp, float f_kd, uint8_t* odata)
 {
 	unsigned char* P = (unsigned char*)&setPos; // ¶¨ÒåÒ»¸öÎŞ·ûºÅ×Ö·ûĞÍÖ¸Õëp²¢Ö¸ÏòfµÄµØÖ·
 	unsigned char* V = (unsigned char*)&setSpeed; // ¶¨ÒåÒ»¸öÎŞ·ûºÅ×Ö·ûĞÍÖ¸Õëp²¢Ö¸ÏòfµÄµØÖ·
