@@ -3,6 +3,7 @@
 #include "control.h"
 #include "HTmotor.h"
 #include "imu.h"
+#include "xuc.h"
 
 namespace
 {
@@ -21,6 +22,14 @@ namespace
 	uint32_t target_reached_time = 0;
 
 	constexpr float AUTO_UP_EPS = 0.1f;
+
+	float follow_yaw_zero = 0.0f;
+
+	bool follow_yaw_zero_ready = false;
+
+	float offset_deg = 0.0f;
+
+	float offset_rad = 0.0f;
 }
 
 void RC::Init(UART* huart, USART_TypeDef* Instance, const uint32_t BaudRate)
@@ -90,7 +99,7 @@ void RC::RC_CheckState() {
 		break;
 
 	case RC_STATE(DOWN, DOWN):
-		ctrl.mode = CONTROL::STOP;
+		ctrl.mode = CONTROL::AUTOAIM;
 		break;
 
 	default:
@@ -109,13 +118,6 @@ void RC::RC_Control() {
 
 	if (ctrl.mode != CONTROL::RESET)
 	{
-
-		/*ctrl.chassis.speedx = rc.ch[3] * 4000.f / 660.f;
-		ctrl.chassis.speedy = -1 * rc.ch[2] * 4000.f / 660.f;
-		ctrl.chassis.speedz = 0;*/
-
-		//ctrl.chassis.Keep_Direction();
-
 		switch (ctrl.mode)
 		{
 		case CONTROL::ROTATION:
@@ -130,18 +132,68 @@ void RC::RC_Control() {
 				DMmotor[i].SetTargetPos(0.0f);
 			}
 
-			DMmotor[YAW].setSpeed = 5.0f;
+			ctrl.chassis.speedz = 0.0f;
+
 
 			if (Shift_mode())
 			{
-				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
-				DMmotor[YAW].setPos = DMmotor[YAW].pos;
-			}//只在切入模式时执行一次，防止电机突转
-			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
+				follow_yaw_zero_ready = false;
 
-			ctrl.chassis.Keep_Direction(rc.ch[3] * 1500.f / 660.f,
-				rc.ch[2] * 1500.f / 660.f);
-			ctrl.chassis.speedz = 0.0f;
+				DMmotor[YAW].setSpeed = 0.5f;
+				DMmotor[YAW].SetTargetPos(0.0f);
+
+				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
+				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
+			}
+
+			
+
+			if (follow_yaw_zero_ready)
+			{
+				offset_deg =  follow_yaw_zero - imu_pantile.GetAngleYaw();
+
+				while (offset_deg > 180.0f)
+					offset_deg -= 360.0f;
+
+				while (offset_deg < -180.0f)
+					offset_deg += 360.0f;
+				
+				offset_rad = offset_deg * 3.14f / 180.f;
+
+				ctrl.chassis.speedx = rc.ch[3] * cosf(offset_rad) * 1500.f / 660.f 
+									  - rc.ch[2] * sinf(offset_rad) * 1500.f / 660.f;
+				ctrl.chassis.speedy = rc.ch[3] * sinf(offset_rad) * 1500.f / 660.f 
+									  + rc.ch[2] * cosf(offset_rad) * 1500.f / 660.f;
+
+				DMmotor[YAW].setSpeed = 5.0f;
+
+				DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
+			}
+			else
+			{
+				if (fabsf(DMmotor[YAW].pos) < 0.05f && imu_pantile.Fresh())
+				{
+					follow_yaw_zero = imu_pantile.GetAngleYaw();
+					follow_yaw_zero_ready = true;
+				}
+				else
+				{
+					DMmotor[YAW].setSpeed = 0.5f;
+					DMmotor[YAW].SetTargetPos(0.0f);
+					follow_yaw_zero_ready = false;
+				}
+				
+				ctrl.chassis.speedx = rc.ch[3] * 1500.f / 660.f;
+				ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
+			}
+
+			
+
+			DMmotor[PITCH].setSpeed = 3.0f;
+			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[1] / 660.0f * 0.01f);
+
+
+
 
 			break;
 		}
@@ -159,23 +211,38 @@ void RC::RC_Control() {
 			ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
 			ctrl.chassis.speedz = 0.0f;
 
+
 			if (Shift_mode())
 			{
 				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
 				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+
+				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
+				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
 			}//只在切入模式时执行一次，防止电机突转
 
 			DMmotor[YAW].setSpeed = 5.0f;
 
 			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
 
-			DMmotor[PITCH].setSpeed = 5.0f;
+			DMmotor[PITCH].setSpeed = 3.0f;
 			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[1] / 660.0f * 0.01f);
+		
 
 			break;
 		}
 
 		case CONTROL::AUTOAIM:
+		{
+			if (xuc.control_enable && xuc.Fresh())
+				{
+					DMmotor[YAW].setSpeed = 5.0f;
+					DMmotor[YAW].SetTargetPos(xuc.target_yaw);
+
+					DMmotor[PITCH].setSpeed = 3.0f;
+					DMmotor[PITCH].SetTargetPos(xuc.target_pitch);
+				}
+		}
 
 			break;
 
@@ -189,18 +256,21 @@ void RC::RC_Control() {
 			ctrl.chassis.speedy = 0;
 			ctrl.chassis.speedz = 0;
 
-			DMmotor[YAW].setSpeed = 5.0f;
-
 			if (Shift_mode())
 			{
 				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
 				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+
+				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
+				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
 			}//只在切入模式时执行一次，防止电机突转
 
-			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
+			DMmotor[YAW].setSpeed = 5.0f;
 
-			DMmotor[PITCH].setSpeed = 5.0f;
-			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[2] / 660.0f * 0.01f);
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
+
+			DMmotor[PITCH].setSpeed = 3.0f;
+			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[1] / 660.0f * 0.01f);
 
 			break;
 		}
@@ -214,24 +284,27 @@ void RC::RC_Control() {
 		{
 			ctrl.shooter.openRub = true;                    // 进 fire 就开摩擦轮
 			ctrl.shooter.flag = false;                       // 进入spinning为连发
-			ctrl.shooter.supply_bullet = (rc.ch[1] > 400);  // 右摇杆上推=拨弹
+			ctrl.shooter.supply_bullet = (rc.ch[3] > 400);  // 右摇杆上推=拨弹
 
 			ctrl.chassis.speedx = 0;
 			ctrl.chassis.speedy = 0;
 			ctrl.chassis.speedz = 0;
 
-			DMmotor[YAW].setSpeed = 5.0f;
-
 			if (Shift_mode())
 			{
 				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
 				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+
+				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
+				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
 			}//只在切入模式时执行一次，防止电机突转
 
-			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[3] / 660.0f * 0.01f);
+			DMmotor[YAW].setSpeed = 5.0f;
 
-			DMmotor[PITCH].setSpeed = 5.0f;
-			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[2] / 660.0f * 0.01f);
+			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
+
+			DMmotor[PITCH].setSpeed = 3.0f;
+			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[1] / 660.0f * 0.01f);
 
 			break;
 		}
@@ -435,6 +508,11 @@ void RC::RC_Control() {
 			DMmotor[i].SetTargetPos(0.0f);
 		}
 
+		DMmotor[YAW].setSpeed = 0.5f;
+		DMmotor[YAW].SetTargetPos(0.0f);
+
+		DMmotor[PITCH].setSpeed = 0.3f;
+		DMmotor[PITCH].SetTargetPos(0.0f);
 
 
 	}

@@ -135,7 +135,7 @@
     <SemihostingPollingDelay>0</SemihostingPollingDelay>
     <StepIntoEntryPoint>false</StepIntoEntryPoint>
     <ReloadFirmwareOnReset>false</ReloadFirmwareOnReset>
-    <ValidateEndOfStackAddress>true</ValidateEndOfStackAddress>
+    <ValidateEndOfStackAddress>false</ValidateEndOfStackAddress>
     <StopAtEntryPoint>false</StopAtEntryPoint>
     <EnableVirtualHalts>false</EnableVirtualHalts>
     <DynamicAnalysisSettings />
@@ -143,6 +143,13 @@
     <TimestampProviderTicksPerSecond>0</TimestampProviderTicksPerSecond>
     <KeepConsoleAfterExit>false</KeepConsoleAfterExit>
     <UnusedStackFillPattern xsi:nil="true" />
+    <RelatedExecutables>
+      <RelatedExecutable>
+        <Program>false</Program>
+        <LoadSymbols>false</LoadSymbols>
+        <ShowInLiveWatch>false</ShowInLiveWatch>
+      </RelatedExecutable>
+    </RelatedExecutables>
     <CheckInterfaceDrivers>true</CheckInterfaceDrivers>
   </Debug>
 </VisualGDBProjectSettings2>

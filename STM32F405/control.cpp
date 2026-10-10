@@ -4,48 +4,50 @@
 #include "HTmotor.h"
 #include "label.h"       // para
 #include <cmath>         // sinf / cosf / fabsf
-#include <algorithm>     // std::min / std::max（Ramp 在用）
+#include <algorithm>	// std::min / std::max（Ramp 在用）
+#include "rc.h"
+#include "xuc.h"
 
-namespace
-{
-	// 单位 rad，含义 = gimbal_yaw_sign * (yaw_raw - yaw0)，已归一到 [-pi, pi)
-	volatile float g_gimbal_yaw_rad = 0.f;
-	volatile bool  g_gimbal_yaw_fresh = false;
-
-	float g_yaw_zero = 0.f;     // 上电后第一帧 = "云台正对车头"
-	bool  g_yaw_zero_ready = false;
-
-	// 只有这些模式允许云台朝向跟随；AUTO_UP / RESET / STOP / FIRE 不参与
-	bool ModeAllowsKeepDir()
-	{
-		switch (ctrl.mode)
-		{
-		case CONTROL::FOLLOW:
-			return true;
-		default:
-			return false;
-		}
-	}
-}
-
-// 由 DecodeTask 调用，喂入最新 yaw
-void Chassis_UpdateGimbalYaw(float yaw_rad, bool fresh)
-{
-	g_gimbal_yaw_fresh = fresh;
-	if (!fresh) return;
-
-	if (!g_yaw_zero_ready)
-	{
-		g_yaw_zero = yaw_rad;
-		g_yaw_zero_ready = true;
-	}
-
-	float d = yaw_rad - g_yaw_zero;
-	while (d > 3.14159265f) d -= 6.28318531f;
-	while (d < -3.14159265f) d += 6.28318531f;
-
-	g_gimbal_yaw_rad = ctrl.chassis.gimbal_yaw_sign * d;
-}
+//namespace
+//{
+//	// 单位 rad，含义 = gimbal_yaw_sign * (yaw_raw - yaw0)，已归一到 [-pi, pi)
+//	volatile float g_gimbal_yaw_rad = 0.f;
+//	volatile bool  g_gimbal_yaw_fresh = false;
+//
+//	float g_yaw_zero = 0.f;     // 上电后第一帧 = "云台正对车头"
+//	bool  g_yaw_zero_ready = false;
+//
+//	// 只有这些模式允许云台朝向跟随；AUTO_UP / RESET / STOP / FIRE 不参与
+//	bool ModeAllowsKeepDir()
+//	{
+//		switch (ctrl.mode)
+//		{
+//		case CONTROL::FOLLOW:
+//			return true;
+//		default:
+//			return false;
+//		}
+//	}
+//}
+//
+//// 由 DecodeTask 调用，喂入最新 yaw
+//void Chassis_UpdateGimbalYaw(float yaw_rad, bool fresh)
+//{
+//	g_gimbal_yaw_fresh = fresh;
+//	if (!fresh) return;
+//
+//	if (!g_yaw_zero_ready)
+//	{
+//		g_yaw_zero = yaw_rad;
+//		g_yaw_zero_ready = true;
+//	}
+//
+//	float d = yaw_rad - g_yaw_zero;
+//	while (d > 3.14159265f) d -= 6.28318531f;
+//	while (d < -3.14159265f) d += 6.28318531f;
+//
+//	g_gimbal_yaw_rad = ctrl.chassis.gimbal_yaw_sign * d;
+//}
 
 void CONTROL::Init(std::vector<Motor*> motor)
 {
@@ -90,31 +92,10 @@ void CONTROL::PANTILE::Keep_Pantile(float angleKeep, PANTILE::TYPE type,IMU fram
 
 void CONTROL::CHASSIS::Keep_Direction()
 {
-	Keep_Direction(0.f, 0.f);
+	
 }
 
-void CONTROL::CHASSIS::Keep_Direction(float vx_in, float vy_in)
-{
-	speedx = (int32_t)vx_in;
-	speedy = (int32_t)vy_in;
-	speedz = 0;
 
-	if (!keep_dir_enable) return;
-	if (!ModeAllowsKeepDir()) return;
-	if (!g_gimbal_yaw_fresh) return;   // IMU 掉线：退化成车体坐标，别乱转
-
-	const float mount = mount_offset_deg * 3.14159265f / 180.f;
-	const float yaw = g_gimbal_yaw_rad + mount;
-	if (fabsf(yaw) > 3.0f) return;
-
-	const float c = cosf(yaw);
-	const float s = sinf(yaw);
-
-	// IMU 的 x/y 轴与底盘(前/左)同轴同向 → 标准旋转 R(yaw)
-	// (vx_in, vy_in) 是云台坐标系下的 (前, 左) 分量
-	speedx = (int32_t)(keep_dir_gain * (c * vx_in - s * vy_in));
-	speedy = (int32_t)(keep_dir_gain * (s * vx_in + c * vy_in));
-}
 
 void CONTROL::CHASSIS::Update()
 {
@@ -127,7 +108,63 @@ void CONTROL::CHASSIS::Update()
 
 void CONTROL::PANTILE::Update()
 {
-	
+	/*if (ctrl.mode == CONTROL::FIRE
+		|| ctrl.mode == CONTROL::SPINNING
+		|| ctrl.mode == CONTROL::SEPARATE
+		|| ctrl.mode == CONTROL::FOLLOW)
+	{*/
+
+		//if (rc.Shift_mode())
+		//{
+		//	DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+		//	DMmotor[YAW].setPos = DMmotor[YAW].pos;
+
+		//	DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
+		//	DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
+		//}//只在切入模式时执行一次，防止电机突转
+
+		//DMmotor[YAW].setSpeed = 5.0f;
+
+		//DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.rc.ch[0] / 660.0f * 0.01f);
+
+		//DMmotor[PITCH].setSpeed = 3.0f;
+		//DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.rc.ch[1] / 660.0f * 0.01f);
+
+		/*ctrl.chassis.speedx = rc.rc.ch[0] * 1500.f / 660.f;*/
+	//}
+
+	//if (ctrl.mode == CONTROL::RESET)
+	//{
+	//	DMmotor[YAW].setSpeed = 2.0f;
+	//	DMmotor[YAW].SetTargetPos(0.0f);
+	//	DMmotor[PITCH].setSpeed = 1.0f;
+	//	DMmotor[PITCH].SetTargetPos(0.0f);
+	//}
+
+	//if (ctrl.mode == CONTROL::AUTOAIM)
+	//{
+	//	// 只接受：上位机允许控制 + 数据未超时 的目标
+	//	if (xuc.control_enable && xuc.Fresh())
+	//	{
+	//		DMmotor[YAW].setSpeed = 5.0f;
+	//		DMmotor[YAW].SetTargetPos(xuc.target_yaw);
+
+	//		DMmotor[PITCH].setSpeed = 3.0f;
+	//		DMmotor[PITCH].SetTargetPos(xuc.target_pitch);
+	//	}
+	//	else
+	//	{
+	//		// 无有效上位机指令：保持进入 AUTOAIM 时的位置，防止突然转动
+	//		if (rc.Shift_mode())
+	//		{
+	//			DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+	//			DMmotor[YAW].setPos = DMmotor[YAW].pos;
+
+	//			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
+	//			DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
+	//		}
+	//	}
+	//}
 }
 
 void CONTROL::SHOOTER::Update()

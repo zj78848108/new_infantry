@@ -140,9 +140,9 @@ void ControlTask(void* pvParameters)
 {
 	while (true)
 	{
-		ctrl.chassis.Update();
-		//ctrl.pantile.Update();
 		rc.Update();
+		//ctrl.pantile.Update();
+		ctrl.chassis.Update();
 		xuc.Encode();
 		ctrl.shooter.Update();
 		vTaskDelay(5);
@@ -160,10 +160,7 @@ void DecodeTask(void* pvParameters)
 		xuc.Decode();
 
 		imu_pantile.Decode();
-
-		// 把最新 yaw 交给底盘（Fresh 为 false 时底盘退化成车体坐标）
-		Chassis_UpdateGimbalYaw(imu_pantile.GetAngleYaw(), imu_pantile.Fresh(100));
-
+		
 		vTaskDelayUntil(&xlastWakeTime, pdMS_TO_TICKS(2));
 	}
 }
