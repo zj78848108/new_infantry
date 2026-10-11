@@ -19,8 +19,8 @@ constexpr auto MAXROLL = 15;//¬÷Õ»ROLL∑∂Œßœﬁ÷∆
 #define CMD_CLEAR_MODE      0x04
 #define P_MIN -4*PI    // Radians
 #define P_MAX 4*PI        
-#define V_MIN -10    // Rad/s
-#define V_MAX 10
+#define V_MIN -35    // Rad/s
+#define V_MAX 35
 #define KP_MIN 0.0f     // N-m/rad
 #define KP_MAX 500.0f
 #define KD_MIN 0.0f     // N-m/rad/s

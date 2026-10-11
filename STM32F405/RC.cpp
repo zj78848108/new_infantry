@@ -17,9 +17,13 @@ namespace
 
 	AUTO_UP_PHASE auto_up_phase = AUTO_UP_PHASE::GO_ZERO;
 
-	constexpr uint32_t AUTO_UP_HOLD_MS = 1500;
+	constexpr uint32_t AUTO_UP_HOLD_MS = 500;
 
 	uint32_t target_reached_time = 0;
+
+	uint32_t return_zero_time = 0;
+
+	bool return_zero_flag = false;
 
 	constexpr float AUTO_UP_EPS = 0.1f;
 
@@ -114,6 +118,10 @@ void RC::RC_Control() {
 		auto_up_phase = AUTO_UP_PHASE::GO_ZERO;
 
 		target_reached_time = 0;
+
+		return_zero_time = 0;
+
+		return_zero_flag = false;
 	}
 
 	if (ctrl.mode != CONTROL::RESET)
@@ -183,8 +191,8 @@ void RC::RC_Control() {
 					follow_yaw_zero_ready = false;
 				}
 				
-				ctrl.chassis.speedx = rc.ch[3] * 1500.f / 660.f;
-				ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
+				ctrl.chassis.speedx = rc.ch[3] * 2500.f / 660.f;
+				ctrl.chassis.speedy = rc.ch[2] * 2500.f / 660.f;
 			}
 
 			
@@ -207,8 +215,8 @@ void RC::RC_Control() {
 				DMmotor[i].SetTargetPos(0.0f);
 			}
 
-			ctrl.chassis.speedx = rc.ch[3] * 1500.f / 660.f;
-			ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
+			ctrl.chassis.speedx = rc.ch[3] * 2500.f / 660.f;
+			ctrl.chassis.speedy = rc.ch[2] * 2500.f / 660.f;
 			ctrl.chassis.speedz = 0.0f;
 
 
@@ -234,18 +242,52 @@ void RC::RC_Control() {
 
 		case CONTROL::AUTOAIM:
 		{
-			if (xuc.control_enable && xuc.Fresh())
-				{
-					DMmotor[YAW].setSpeed = 5.0f;
-					DMmotor[YAW].SetTargetPos(xuc.target_yaw);
+			if (xuc.control_enable && xuc.Fresh() && imu_pantile.Fresh())
+			{
+				float yaw_err_deg = xuc.target_yaw - imu_pantile.GetAngleYaw();
 
-					DMmotor[PITCH].setSpeed = 3.0f;
-					DMmotor[PITCH].SetTargetPos(xuc.target_pitch);
-				}
+				float pitch_err_deg = xuc.target_pitch - imu_pantile.GetAnglePitch();
+
+				if (fabsf(yaw_err_deg) < 0.5f)
+					yaw_err_deg = 0.0f;
+
+				if (fabsf(pitch_err_deg) < 0.3f)
+					pitch_err_deg = 0.0f;
+
+				while (yaw_err_deg > 180.0f)
+					yaw_err_deg -= 360.0f;
+
+				while (yaw_err_deg < -180.0f)
+					yaw_err_deg += 360.0f;
+
+				while (pitch_err_deg > 180.0f)
+					pitch_err_deg -= 360.0f;
+
+				while (pitch_err_deg < -180.0f)
+					pitch_err_deg += 360.0f;
+
+				float yaw_delta = - yaw_err_deg * 3.14f / 180.0f;
+				float pitch_delta = - pitch_err_deg * 3.14f / 180.0f;
+
+				DMmotor[YAW].setSpeed = 3.0f;
+				DMmotor[PITCH].setSpeed = 0.8f;
+
+				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos + yaw_delta);
+				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos + pitch_delta);
+
+			}
+			else
+			{
+				DMmotor[YAW].setSpeed = 3.0f;
+				DMmotor[PITCH].setSpeed = 0.8f;
+				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
+				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
+				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
+			}
+
+				break;
 		}
-
-			break;
-
 		case CONTROL::FIRE:
 		{
 			ctrl.shooter.openRub = true;                    // ½ø fire ¾Í¿ªÄ¦²ÁÂÖ
@@ -356,7 +398,7 @@ void RC::RC_Control() {
 					6.0f
 				};
 
-				ctrl.chassis.speedx = 700.0f;
+				ctrl.chassis.speedx = 1200.0f;
 
 				for (uint8_t i = 0; i < 4; i++)
 				{
@@ -400,12 +442,29 @@ void RC::RC_Control() {
 
 			case AUTO_UP_PHASE::RETURN_ZERO:
 			{
-				DMmotor[0].setSpeed = 3.5f;
-				DMmotor[1].setSpeed = 5.0f;
-				DMmotor[2].setSpeed = 3.5f;
-				DMmotor[3].setSpeed = 5.0f;
 
-				ctrl.chassis.speedx = 1100.0f;
+				if(return_zero_flag == false)
+				{
+					if (return_zero_time == 0)
+					{
+						return_zero_time = HAL_GetTick();
+					}
+
+					if (HAL_GetTick() - return_zero_time >= 1000)
+					{
+						ctrl.chassis.speedx = 0.0f;
+						return_zero_flag = true;
+					}
+					else
+					{
+						ctrl.chassis.speedx = 1300.0f;
+					}
+				}
+				
+				DMmotor[0].setSpeed = 25.0f;
+				DMmotor[1].setSpeed = 30.0f;
+				DMmotor[2].setSpeed = 25.0f;
+				DMmotor[3].setSpeed = 30.0f;
 
 				for (uint8_t i = 0; i < 4; i++)
 				{
@@ -454,18 +513,18 @@ void RC::RC_Control() {
 			DMmotor[1].setSpeed = 2.5f;
 			DMmotor[2].setSpeed = 2.5f;
 			DMmotor[3].setSpeed = 2.5f;
-			ctrl.chassis.speedx = rc.ch[3] * 1500.f / 660.f;
-			ctrl.chassis.speedy = rc.ch[2] * 1500.f / 660.f;
-			ctrl.chassis.speedz = rc.ch[0] * 700.f / 660.f;
+			ctrl.chassis.speedx = rc.ch[3] * 2500.f / 660.f;
+			ctrl.chassis.speedy = rc.ch[2] * 2500.f / 660.f;
+			ctrl.chassis.speedz = rc.ch[0] * 1500.f / 660.f;
 			break;
 		}
 
 		case CONTROL::UP_STAIRS:
 		{
-			DMmotor[0].setSpeed = 5.0f;
-			DMmotor[1].setSpeed = 5.0f;
-			DMmotor[2].setSpeed = 5.0f;
-			DMmotor[3].setSpeed = 5.0f;
+			DMmotor[0].setSpeed = 30.0f;
+			DMmotor[1].setSpeed = 30.0f;
+			DMmotor[2].setSpeed = 30.0f;
+			DMmotor[3].setSpeed = 30.0f;
 			float delta1 =
 				rc.ch[3] / 660.0f *
 				1.0f *
