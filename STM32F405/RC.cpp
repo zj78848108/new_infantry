@@ -260,12 +260,6 @@ void RC::RC_Control() {
 				while (yaw_err_deg < -180.0f)
 					yaw_err_deg += 360.0f;
 
-				while (pitch_err_deg > 180.0f)
-					pitch_err_deg -= 360.0f;
-
-				while (pitch_err_deg < -180.0f)
-					pitch_err_deg += 360.0f;
-
 				float yaw_delta = - yaw_err_deg * 3.14f / 180.0f;
 				float pitch_delta = - pitch_err_deg * 3.14f / 180.0f;
 
@@ -274,6 +268,10 @@ void RC::RC_Control() {
 
 				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos + yaw_delta);
 				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos + pitch_delta);
+
+				ctrl.shooter.openRub = true;
+
+				ctrl.shooter.supply_bullet = xuc.shoot_request;
 
 			}
 			else
@@ -284,7 +282,11 @@ void RC::RC_Control() {
 				DMmotor[YAW].setPos = DMmotor[YAW].pos;
 				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
 				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
+				ctrl.shooter.openRub = false;
+				ctrl.shooter.supply_bullet = false;
 			}
+
+			ctrl.shooter.flag = false;
 
 				break;
 		}

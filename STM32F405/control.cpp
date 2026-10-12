@@ -8,46 +8,8 @@
 #include "rc.h"
 #include "xuc.h"
 
-//namespace
-//{
-//	// 单位 rad，含义 = gimbal_yaw_sign * (yaw_raw - yaw0)，已归一到 [-pi, pi)
-//	volatile float g_gimbal_yaw_rad = 0.f;
-//	volatile bool  g_gimbal_yaw_fresh = false;
-//
-//	float g_yaw_zero = 0.f;     // 上电后第一帧 = "云台正对车头"
-//	bool  g_yaw_zero_ready = false;
-//
-//	// 只有这些模式允许云台朝向跟随；AUTO_UP / RESET / STOP / FIRE 不参与
-//	bool ModeAllowsKeepDir()
-//	{
-//		switch (ctrl.mode)
-//		{
-//		case CONTROL::FOLLOW:
-//			return true;
-//		default:
-//			return false;
-//		}
-//	}
-//}
-//
-//// 由 DecodeTask 调用，喂入最新 yaw
-//void Chassis_UpdateGimbalYaw(float yaw_rad, bool fresh)
-//{
-//	g_gimbal_yaw_fresh = fresh;
-//	if (!fresh) return;
-//
-//	if (!g_yaw_zero_ready)
-//	{
-//		g_yaw_zero = yaw_rad;
-//		g_yaw_zero_ready = true;
-//	}
-//
-//	float d = yaw_rad - g_yaw_zero;
-//	while (d > 3.14159265f) d -= 6.28318531f;
-//	while (d < -3.14159265f) d += 6.28318531f;
-//
-//	g_gimbal_yaw_rad = ctrl.chassis.gimbal_yaw_sign * d;
-//}
+
+
 
 void CONTROL::Init(std::vector<Motor*> motor)
 {
@@ -169,10 +131,13 @@ void CONTROL::PANTILE::Update()
 
 void CONTROL::SHOOTER::Update()
 {
-	const bool shooting = (ctrl.mode == CONTROL::FIRE || ctrl.mode == CONTROL::SPINNING);
+	const bool shooter_mode =
+		ctrl.mode == CONTROL::FIRE ||
+		ctrl.mode == CONTROL::SPINNING ||
+		ctrl.mode == CONTROL::AUTOAIM;
 
-	// 两个摩擦轮：进 fire 模式且 openRub 才转，离开立刻停
-	const int16_t sp = (shooting) ? rub_speed : 0;
+	const bool rub_on = shooter_mode && ctrl.shooter.openRub;
+	const int16_t sp = rub_on ? rub_speed : 0;
 	for (uint8_t i = 0; i < SHOOTER_MOTOR_NUM; i++)
 		if (ctrl.shooter_motor[i] != nullptr)
 			ctrl.shooter_motor[i]->setspeed = (i == 1) ? -sp : sp;  // 对装反向时取负
@@ -185,9 +150,9 @@ void CONTROL::SHOOTER::Update()
 			const int32_t step = static_cast<int32_t>(
 				8192.f * dial_gear_ratio / bullets_per_rev + 0.5f);
 
-			const bool trig = shooting && supply_bullet;
+			const bool trig = shooter_mode && supply_bullet;
 
-			if (!shooting)
+			if (!shooter_mode)
 			{
 				feeding = false;
 				feed_last_trig = false;
@@ -219,7 +184,7 @@ void CONTROL::SHOOTER::Update()
 	else {
 		// 拨弹轮：进 fire 模式且 supply_bullet 才转，离开立刻停
 		if (ctrl.supply_motor[0] != nullptr)
-			ctrl.supply_motor[0]->setspeed = (shooting && supply_bullet) ? supply_speed : 0;
+			ctrl.supply_motor[0]->setspeed = (shooter_mode && supply_bullet) ? supply_speed : 0;
 	}
 }
 
