@@ -23,10 +23,15 @@ struct XucFeedbackPacket
     uint8_t head[2];       // 'S', 'P'
     uint8_t mode;          // 0 idle, 1 auto aim, 2 small rune, 3 large rune
     uint8_t robot_id;
+    // Diagnostic multiplexing for the XUC link: measured M2006 feeder rotor
+    // speed in rpm.  The upper computer uses this to determine whether the
+    // feeder has actually started rotating.
     float bullet_speed;
+    // Measured friction-wheel speeds: low byte = wheel 0, high byte = wheel 1,
+    // encoded as magnitude / (40 rpm), saturated to 255 per wheel.
     uint16_t bullet_count;
-    float imu_pitch;       // rad
-    float imu_yaw;         // rad
+    float imu_pitch;       // deg
+    float imu_yaw;         // deg
     uint16_t crc16;        // little-endian on the wire
 };
 #pragma pack(pop)

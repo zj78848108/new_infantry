@@ -92,9 +92,31 @@ void XUC::Encode()
     packet.mode = (ctrl.mode == CONTROL::AUTOAIM) ? 1U : 0U;
     packet.robot_id = judgement.data.robot_status_t.robot_id;
 
-    // Shooter speed/count are not connected in this project yet.
-    packet.bullet_speed = 0.0f;
-    packet.bullet_count = 0U;
+    // Diagnostic multiplexing agreed with the upper computer: bullet_speed
+    // carries the measured M2006 feeder rotor speed (rpm), rather than
+    // projectile speed.  Use measured speed, not setspeed, so the host can
+    // observe whether the feeder actually started rotating.
+    Motor* const feeder = ctrl.supply_motor[0];
+    packet.bullet_speed =
+        (feeder != nullptr) ? static_cast<float>(feeder->curspeed) : 0.0f;
+
+    // bullet_count packs measured friction-wheel speed magnitudes at
+    // 40 rpm/LSB: low byte = wheel 0, high byte = wheel 1.  The wheels rotate
+    // in opposite directions, hence the magnitude encoding.
+    auto quantize_wheel_rpm = [](int32_t rpm) -> uint16_t
+    {
+        const int32_t magnitude = (rpm >= 0) ? rpm : -rpm;
+        const int32_t quantized = (magnitude + 20) / 40;
+        return static_cast<uint16_t>((quantized > 255) ? 255 : quantized);
+    };
+
+    const int32_t wheel0_rpm =
+        (ctrl.shooter_motor[0] != nullptr) ? ctrl.shooter_motor[0]->curspeed : 0;
+    const int32_t wheel1_rpm =
+        (ctrl.shooter_motor[1] != nullptr) ? ctrl.shooter_motor[1]->curspeed : 0;
+    packet.bullet_count = static_cast<uint16_t>(
+        quantize_wheel_rpm(wheel0_rpm) |
+        (quantize_wheel_rpm(wheel1_rpm) << 8U));
 
     const float pitch = imu_pantile.GetAnglePitch();
     const float yaw = imu_pantile.GetAngleYaw();
