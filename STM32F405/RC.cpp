@@ -264,7 +264,7 @@ void RC::RC_Control() {
 				float pitch_delta = - pitch_err_deg * 3.14f / 180.0f;
 
 				DMmotor[YAW].setSpeed = 3.0f;
-				DMmotor[PITCH].setSpeed = 0.8f;
+				DMmotor[PITCH].setSpeed = 2.0f;
 
 				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos + yaw_delta);
 				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos + pitch_delta);
@@ -276,8 +276,8 @@ void RC::RC_Control() {
 			}
 			else
 			{
-				DMmotor[YAW].setSpeed = 3.0f;
-				DMmotor[PITCH].setSpeed = 0.8f;
+				DMmotor[YAW].setSpeed = 0.0f;
+				DMmotor[PITCH].setSpeed = 0.0f;
 				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
 				DMmotor[YAW].setPos = DMmotor[YAW].pos;
 				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
