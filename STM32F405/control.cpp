@@ -182,7 +182,7 @@ void CONTROL::SHOOTER::Update()
 		}
 	}
 	else {
-		// 拨弹轮：进 fire 模式且 supply_bullet 才转，离开立刻停
+		// 拨弹轮：进 spinning 模式且 supply_bullet 才转，离开立刻停
 		if (ctrl.supply_motor[0] != nullptr)
 			ctrl.supply_motor[0]->setspeed = (shooter_mode && supply_bullet) ? supply_speed : 0;
 	}

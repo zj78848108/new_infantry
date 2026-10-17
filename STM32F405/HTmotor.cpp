@@ -41,8 +41,11 @@ DMMOTOR& DMMOTOR::State_Decode(CAN hcan, uint8_t idata[][8],uint8_t index)//接收
 	//receive_data[0]=电机id
 	int direct = 0;
 	int tmp_value = 0;
-	tmp_value = (idata[index][1] << 8) | (idata[index][2]);//电机位置
-	pos = uint_to_float(tmp_value, P_MIN, P_MAX, 16);//浮点型
+		tmp_value = (idata[index][1] << 8) | (idata[index][2]);//电机位置
+	if (position == R_B)   // ★右后这台 16bit 位置只覆盖 ±2π（实测：setPos=2.0 读到 4.0）
+		pos = uint_to_float(tmp_value, -2.f * PI, 2.f * PI, 16);
+	else
+		pos = uint_to_float(tmp_value, P_MIN, P_MAX, 16);//浮点型
 	tmp_value = (idata[index][3] << 4) | (idata[index][4] >> 4);//转速
 	curSpeed = uint_to_float(tmp_value, V_MIN, V_MAX, 12);//转浮点型
 	tmp_value = (idata[index][5]) | ((idata[index][4] & 0x0f) << 8);

@@ -134,10 +134,13 @@ void RC::RC_Control() {
 
 		case CONTROL::FOLLOW:
 		{
-			for (uint8_t i = 0; i < 4; i++)
+			if (Shift_mode())
 			{
-				DMmotor[i].setSpeed = 5.0f;
-				DMmotor[i].SetTargetPos(0.0f);
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].setSpeed = 5.0f;
+					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
+				}
 			}
 
 			ctrl.chassis.speedz = 0.0f;
@@ -209,10 +212,13 @@ void RC::RC_Control() {
 		case CONTROL::SEPARATE:
 		{
 
-			for (uint8_t i = 0; i < 4; i++)
+			if (Shift_mode())
 			{
-				DMmotor[i].setSpeed = 5.0f;
-				DMmotor[i].SetTargetPos(0.0f);
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].setSpeed = 5.0f;
+					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
+				}
 			}
 
 			ctrl.chassis.speedx = rc.ch[3] * 2500.f / 660.f;
@@ -242,6 +248,15 @@ void RC::RC_Control() {
 
 		case CONTROL::AUTOAIM:
 		{
+			if (Shift_mode())
+			{
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].setSpeed = 5.0f;
+					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
+				}
+			}
+
 			if (xuc.control_enable && xuc.Fresh() && imu_pantile.Fresh())
 			{
 				float yaw_err_deg = xuc.target_yaw - imu_pantile.GetAngleYaw();
@@ -282,7 +297,6 @@ void RC::RC_Control() {
 				DMmotor[YAW].setPos = DMmotor[YAW].pos;
 				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
 				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
-				ctrl.shooter.openRub = false;
 				ctrl.shooter.supply_bullet = false;
 			}
 
@@ -292,9 +306,18 @@ void RC::RC_Control() {
 		}
 		case CONTROL::FIRE:
 		{
+			if (Shift_mode())
+			{
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].setSpeed = 5.0f;
+					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
+				}
+			}
+
 			ctrl.shooter.openRub = true;                    // 进 fire 就开摩擦轮
 			ctrl.shooter.flag = true;                       // 进入fire为单发
-			ctrl.shooter.supply_bullet = (rc.ch[1] > 400);  // 右摇杆上推=拨弹
+			ctrl.shooter.supply_bullet = (rc.ch[3] > 400);  // 右摇杆上推=拨弹
 
 			ctrl.chassis.speedx = 0;
 			ctrl.chassis.speedy = 0;
@@ -326,6 +349,15 @@ void RC::RC_Control() {
 
 		case CONTROL::SPINNING:
 		{
+			if (Shift_mode())
+			{
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].setSpeed = 5.0f;
+					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
+				}
+			}
+
 			ctrl.shooter.openRub = true;                    // 进 fire 就开摩擦轮
 			ctrl.shooter.flag = false;                       // 进入spinning为连发
 			ctrl.shooter.supply_bullet = (rc.ch[3] > 400);  // 右摇杆上推=拨弹
@@ -511,10 +543,15 @@ void RC::RC_Control() {
 
 		case CONTROL::CHASSIS_MOVE:
 		{
-			DMmotor[0].setSpeed = 2.5f;
-			DMmotor[1].setSpeed = 2.5f;
-			DMmotor[2].setSpeed = 2.5f;
-			DMmotor[3].setSpeed = 2.5f;
+			if (Shift_mode())
+			{
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].setSpeed = 5.0f;
+					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
+				}
+			}
+
 			ctrl.chassis.speedx = rc.ch[3] * 2500.f / 660.f;
 			ctrl.chassis.speedy = rc.ch[2] * 2500.f / 660.f;
 			ctrl.chassis.speedz = rc.ch[0] * 1500.f / 660.f;
@@ -555,17 +592,29 @@ void RC::RC_Control() {
 			break;
 		}
 		default:
+		{
 			ctrl.chassis.speedx = 0;
 			ctrl.chassis.speedy = 0;
 			ctrl.chassis.speedz = 0;
+
+			if (Shift_mode())
+			{
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].setSpeed = 5.0f;
+					DMmotor[i].SetTargetPos(DMmotor[i].pos);
+				}
+			}
+
 			break;
+		}
 		}
 	}
 	else 
 	{
 		for (uint8_t i = 0; i < 4; i++)
 		{
-			DMmotor[i].setSpeed = 2.5f;
+			DMmotor[i].setSpeed = 5.0f;
 			DMmotor[i].SetTargetPos(0.0f);
 		}
 

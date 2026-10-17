@@ -74,6 +74,10 @@ void start_task(void* pvParameters)
 	taskEXIT_CRITICAL();            //退出临界区
 }
 int CNT = 0;
+// —— 调试观测：两个摩擦轮转速绝对值 ——
+volatile int32_t rub_spd_a   = 0;   // can2_motor[0] |curspeed|
+volatile int32_t rub_spd_b   = 0;   // can2_motor[1] |curspeed|
+volatile int32_t rub_spd_gap = 0;   // a - b（正常应接近 0）
 void MotorUpdateTask(void* pvParameters)
 {
 	
@@ -84,6 +88,10 @@ void MotorUpdateTask(void* pvParameters)
 		for (auto& motor : can1_motor)motor.Ontimer(can1.data, can1.temp_data);
 
 		for (auto& motor : can2_motor)motor.Ontimer(can2.data, can2.temp_data);
+
+		rub_spd_a = (can2_motor[0].curspeed < 0) ? -can2_motor[0].curspeed : can2_motor[0].curspeed;
+		rub_spd_b = (can2_motor[1].curspeed < 0) ? -can2_motor[1].curspeed : can2_motor[1].curspeed;
+		rub_spd_gap = rub_spd_a - rub_spd_b;
 
 		for (uint8_t i = 0; i < DMMOTOR_NUM; i++)
 		{

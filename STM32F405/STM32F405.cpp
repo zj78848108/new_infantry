@@ -81,21 +81,9 @@ int main(void)
 	para.Init();
 
 	ctrl.Init(std::vector<Motor*>{
-		&can2_motor[0],
-			& can2_motor[1],
-			& can2_motor[2],
-			& can2_motor[3],
-			& can2_motor[4],
-			& can2_motor[5]
-	});
-	ctrl.Init(std::vector<Motor*>{
-		&can1_motor[0],
-			& can1_motor[1],
-			& can1_motor[2],
-			& can1_motor[3],
-			& can1_motor[4],
-			& can1_motor[5]
-
+		&can1_motor[0], & can1_motor[1], & can1_motor[2], & can1_motor[3],  // 底盘 M3508 ×4
+			& can2_motor[0], & can2_motor[1],                                   // 摩擦轮 M3508 ×2
+			& can2_motor[2]                                                    // 拨弹轮 M2006
 	});
 
 	task.Init();
