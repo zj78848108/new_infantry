@@ -37,8 +37,11 @@ void CONTROL::Init(std::vector<Motor*> motor)
 			break;
 		}
 	}
-	pantile_motor[PANTILE::TYPE::PITCH]->setangle = para.initial_pitch;
-	pantile_motor[PANTILE::TYPE::YAW]->setangle = para.initial_yaw;
+	// This robot uses DM gimbal motors; no DJI pantile motors are registered.
+	if (pantile_motor[PANTILE::TYPE::PITCH])
+		pantile_motor[PANTILE::TYPE::PITCH]->setangle = para.initial_pitch;
+	if (pantile_motor[PANTILE::TYPE::YAW])
+		pantile_motor[PANTILE::TYPE::YAW]->setangle = para.initial_yaw;
 }
 
 
@@ -160,7 +163,7 @@ void CONTROL::SHOOTER::Update()
 			}
 			else
 			{
-				if (trig && !feed_last_trig)      // 扳机上升沿 → 只排一发
+				if (trig && !feed_last_trig && !feeding) // 扳机上升沿且空闲 → 只排一发
 					feed_target = sm->sum_angle + step, feeding = true;
 
 				feed_last_trig = trig;

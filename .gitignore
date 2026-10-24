@@ -16,3 +16,11 @@ STM32F405/VisualGDB/Debug/
 
 /dsused/.keep-dsh-workspace
 /dsused
+
+# Local scratch
+/tmp/
+/tmp_dm_manual.txt
+
+# Vendor IMU documents and archives (large binaries)
+/imu/**/*.zip
+/imu/**/*.pdf

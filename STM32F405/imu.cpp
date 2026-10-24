@@ -85,12 +85,14 @@ void IMU::Decode()
 				continue;
 
 			crc = 0;
+            // HiPNUC CRC covers header + length + payload, skipping CRC bytes 4..5.
+            (void)Check(frame, 4, 0);
 			const bool crc_ok = Check(frame + 6, data_len, frame_crc);
 			crc = 0;
 			if (!crc_ok)
 			{
 				++m_err_count;
-				if (frame[6] != 0x91) continue;      // 不是姿态帧才跳过
+				continue; // Reject checksum-invalid frames, including 0x91.
 			}
 
 			if (frame[6] == 0x91)
@@ -177,12 +179,10 @@ bool IMU::Check(uint8_t* pdata, uint16_t len, uint32_t com)
 			}
 		}
 
-		// ↓↓↓ 第 4 项的核心：兼容 CRC 高低字节相反 ↓↓↓
-		crc_calc = (uint16_t)(crc & 0xFFFFU);                     // 本地算出的 CRC
-		crc_recv = (uint16_t)(com & 0xFFFFU);                     // 帧内读到的 CRC
-		const uint16_t crc_recv_swap = (uint16_t)((crc_recv >> 8) | (crc_recv << 8));
-		return (crc_calc == crc_recv) || (crc_calc == crc_recv_swap);
-		// ↑↑↑ 正常匹配 或 字节交换后匹配，都算通过 ↑↑↑
+        // Protocol CRC is little endian; do not accept swapped CRC bytes.
+        crc_calc = static_cast<uint16_t>(crc);
+        crc_recv = static_cast<uint16_t>(com);
+        return crc_calc == crc_recv;
 	}
 	return false;
 }

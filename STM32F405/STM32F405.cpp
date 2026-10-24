@@ -19,6 +19,7 @@
 #include "sysclk.h"
 #include "delay.h"
 #include "imu.h"
+#include "imu_watch.h"
 #include "motor.h"
 #include "RC.h"
 #include "control.h"
@@ -35,8 +36,8 @@ Motor can1_motor[CAN1_MOTOR_NUM] = {
 	Motor(M3508,SPD,chassis, ID4, PID(2.0f, 0.0f, 0.5f,0.f))
 };
 Motor can2_motor[CAN2_MOTOR_NUM] = {
-	Motor(M3508,SPD,shooter, ID4, PID(10.f, 0.0f, 1.5f,0.f)),
-	Motor(M3508,SPD,shooter, ID1, PID(10.f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID4, PID(10.0f, 0.0f, 1.5f,0.f)),
+	Motor(M3508,SPD,shooter, ID1, PID(10.0f, 0.0f, 1.5f,0.f)),
 	Motor(M2006,SPD,supply, ID6, PID(5.f, 0.0f, 1.5f,0.f))
 };
 DMMOTOR DMmotor[DMMOTOR_NUM] = {
@@ -73,7 +74,7 @@ int main(void)
 	timer.Init(BASE, TIM3, 1000).BaseInit();
 
 	imu_pantile.Init(&uart3, USART3, 115200, CH010);
-	rc.Init(&uart2, USART2, 100000);
+	rc.Init(&uart4, UART4, 100000);
 	power.Init(&uart5,UART5,9600);
 	xuc.Init(&uart6, USART6, 460800);
 	

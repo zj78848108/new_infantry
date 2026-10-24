@@ -22,6 +22,7 @@
 #include "stm32f4xx_hal_gpio.h"
 #include "label.h"
 #include "queue.h"
+#include <string.h>
 
 UART& UART::Init(USART_TypeDef* Instance, const uint32_t BaudRate)
 {
@@ -59,6 +60,7 @@ UART& UART::DMARxInit(const uint8_t* buffer, const uint32_t size)//size = UART_M
 		buffer = m_uartrx;
 	huart.hdmarx->Instance->M0AR = reinterpret_cast<uint32_t>(buffer);//设置存储器0地址
 	DMAClearAllFlags(huart.hdmarx);
+	if (buffered_rx_) __HAL_DMA_ENABLE_IT(huart.hdmarx, DMA_IT_TC);
 	__HAL_DMA_ENABLE(huart.hdmarx);							//使能串口DMA接收	
 	SET_BIT(huart.Instance->CR3, USART_CR3_DMAR);
 
@@ -451,6 +453,15 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 
 void UART::OnUARTITHandler(void)
 {
+    if (buffered_rx_) {
+        if (__HAL_UART_GET_FLAG(&huart, UART_FLAG_IDLE) &&
+            __HAL_UART_GET_IT_SOURCE(&huart, UART_IT_IDLE)) {
+            __HAL_UART_CLEAR_IDLEFLAG(&huart);
+            CommitBufferedRx();
+        }
+        HAL_UART_IRQHandler(&huart);
+        return;
+    }
 	if (__HAL_UART_GET_FLAG(&huart, UART_FLAG_IDLE) && __HAL_UART_GET_IT_SOURCE(&huart, UART_IT_IDLE))
 	{
 		__HAL_UART_CLEAR_IDLEFLAG(&huart);
@@ -470,6 +481,7 @@ void UART::OnDMAITHandler(void)
 {
 	UART::DMAClearAllFlags(huart.hdmatx);
 	__HAL_DMA_DISABLE(huart.hdmatx);
+    if (buffered_rx_) buffered_tx_busy_ = false;
 }
 
 extern "C" void USART1_IRQHandler(void)
@@ -496,12 +508,13 @@ extern "C" void USART6_IRQHandler(void)
 {
 	uart6.OnUARTITHandler();
 }
-extern "C" void DMA1_Stream2_IRQHandler(void)
+extern "C" void DMA1_Stream5_IRQHandler(void)
 {
+    uart2.OnBufferedRxDMAInterrupt();
 }
-extern "C" void DMA1_Stream4_IRQHandler(void)//发送中断
+extern "C" void DMA1_Stream6_IRQHandler(void)
 {
-	uart4.OnDMAITHandler();
+	uart2.OnDMAITHandler();
 }
 
 void UART::DMATransmit(uint8_t* const pData, const uint32_t Size)
@@ -520,3 +533,59 @@ void UART::UARTTransmit(uint8_t* pData, uint32_t Size)
 }
 
 
+
+// Only the UART selected by S102 opts into this path. Other UART queues are unchanged.
+bool UART::EnableBufferedRx()
+{
+    if (!buffered_rx_) buffered_rx_ = xQueueCreate(8, sizeof(RxBlock));
+    return buffered_rx_ != nullptr;
+}
+
+bool UART::ReceiveBlock(RxBlock& block)
+{
+    return buffered_rx_ && xQueueReceive(buffered_rx_, &block, 0) == pdTRUE;
+}
+
+bool UART::TransmitBounded(uint8_t* data, uint32_t size, uint32_t timeout_ms)
+{
+    return HAL_UART_Transmit(&huart, data, size, timeout_ms) == HAL_OK;
+}
+
+void UART::CommitBufferedRx()
+{
+    __HAL_DMA_DISABLE(huart.hdmarx);
+    while (huart.hdmarx->Instance->CR & DMA_SxCR_EN) {}
+    const uint16_t length = UART_MAX_LEN - __HAL_DMA_GET_COUNTER(huart.hdmarx);
+    BaseType_t wake = pdFALSE;
+    if (length) {
+        buffered_block_.length = length;
+        buffered_block_.received_ms = HAL_GetTick();
+        memcpy(buffered_block_.data, m_uartrx, length);
+        if (xQueueSendFromISR(buffered_rx_, &buffered_block_, &wake) != pdTRUE)
+            ++buffered_overruns_;
+    }
+    DMAClearAllFlags(huart.hdmarx);
+    __HAL_DMA_SET_COUNTER(huart.hdmarx, UART_MAX_LEN);
+    __HAL_DMA_ENABLE(huart.hdmarx);
+    portYIELD_FROM_ISR(wake);
+}
+
+void UART::OnBufferedRxDMAInterrupt()
+{
+    if (buffered_rx_ &&
+        __HAL_DMA_GET_FLAG(huart.hdmarx, __HAL_DMA_GET_TC_FLAG_INDEX(huart.hdmarx)))
+        CommitBufferedRx();
+}
+
+HAL_StatusTypeDef UART::TransmitBuffered(const uint8_t* data, uint16_t size)
+{
+    if (!buffered_rx_ || !data || !size || size > sizeof(buffered_tx_) || !huart.hdmatx)
+        return HAL_ERROR;
+    // Single task producer (S102) and DMA completion ISR consumer.
+    if (buffered_tx_busy_) return HAL_BUSY;
+    memcpy(buffered_tx_, data, size);
+    buffered_tx_busy_ = true;
+    __DMB();
+    DMATransmit(buffered_tx_, size);
+    return HAL_OK;
+}

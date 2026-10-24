@@ -28,6 +28,7 @@ public:
 
 	bool  Fresh(uint32_t timeout_ms = 100) const;
 	uint32_t FrameCount() const { return m_frame_count; }
+	uint32_t LastRxMs() const { return m_last_ms; }
 	uint32_t ErrCount()  const { return m_err_count; }
 	Angle LatestAngle()  const { return m_latest; }
 

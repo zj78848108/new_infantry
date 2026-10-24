@@ -256,6 +256,7 @@ void RC::RC_Control() {
 					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
 				}
 			}
+			ctrl.shooter.openRub = true;
 
 			if (xuc.control_enable && xuc.Fresh() && imu_pantile.Fresh())
 			{
@@ -284,8 +285,6 @@ void RC::RC_Control() {
 				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos + yaw_delta);
 				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos + pitch_delta);
 
-				ctrl.shooter.openRub = true;
-
 				ctrl.shooter.supply_bullet = xuc.shoot_request;
 
 			}
@@ -297,10 +296,12 @@ void RC::RC_Control() {
 				DMmotor[YAW].setPos = DMmotor[YAW].pos;
 				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
 				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
+				
 				ctrl.shooter.supply_bullet = false;
 			}
 
-			ctrl.shooter.flag = false;
+			// XUC shoot is a single-shot trigger in auto aim: 0 -> 1 queues one round.
+			ctrl.shooter.flag = true;
 
 				break;
 		}

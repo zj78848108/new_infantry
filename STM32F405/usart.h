@@ -52,7 +52,25 @@ extern "C" {
 		BaseType_t pd_Rx = false;
 		uint32_t dataDmaNum{};
 		uint8_t m_uartrx[UART_MAX_LEN];
-	private:
+        // Opt-in, length/time-tagged FIFO. Existing UART users retain their queue.
+        struct RxBlock {
+            uint32_t received_ms;
+            uint16_t length;
+            uint8_t data[UART_MAX_LEN];
+        };
+        bool EnableBufferedRx();
+        bool ReceiveBlock(RxBlock& block);
+        uint32_t BufferedRxOverruns() const { return buffered_overruns_; }
+        void OnBufferedRxDMAInterrupt();
+        bool TransmitBounded(uint8_t* data, uint32_t size, uint32_t timeout_ms);
+        HAL_StatusTypeDef TransmitBuffered(const uint8_t* data, uint16_t size);
+    private:
+        QueueHandle_t buffered_rx_ = nullptr;
+        RxBlock buffered_block_{};
+        uint8_t buffered_tx_[32]{};
+        volatile bool buffered_tx_busy_ = false;
+        volatile uint32_t buffered_overruns_ = 0;
+        void CommitBufferedRx();
 		UART_HandleTypeDef huart;
 		
 

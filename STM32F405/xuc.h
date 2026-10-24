@@ -12,7 +12,7 @@ struct XucCommandPacket
 {
     uint8_t head[2];       // 'S', 'P'
     uint8_t control;       // 1: allow gimbal control
-    uint8_t shoot;         // 1: request shooting
+    uint8_t shoot;         // rising edge 0 -> 1: request one shot in auto aim
     float yaw;             // deg
     float pitch;           // deg
     uint16_t crc16;        // little-endian on the wire
