@@ -34,6 +34,29 @@ namespace
 	float offset_deg = 0.0f;
 
 	float offset_rad = 0.0f;
+
+	enum class DOWN_STAIRS_PHASE
+	{
+		GO_ZERO,
+		GO_TARGET,
+		HOLD_READY
+	};
+
+	DOWN_STAIRS_PHASE down_stairs_phase = DOWN_STAIRS_PHASE::GO_ZERO;
+
+	uint32_t down_stairs_hold_time = 0;
+
+	bool down_stairs_ready = false;      // 置位 = 姿态已摆好、底盘已交给摇杆
+
+	constexpr float    DOWN_STAIRS_EPS = 0.1f;   // 到位判据(rad)，≈5.7°
+	constexpr uint32_t DOWN_STAIRS_HOLD_MS = 300;   // 到位后确认稳定时间(ms)
+	constexpr float    DOWN_STAIRS_MARGIN = 0.1f;   // 距行程端点余量(rad)
+
+	constexpr float    DOWN_STAIRS_V_FRONT = 2.5f;  // 摆臂限速：前臂(0/2)
+	constexpr float    DOWN_STAIRS_V_BACK = 4.0f;  // 摆臂限速：后臂(1/3)
+
+	constexpr float    DOWN_STAIRS_SPD_X = 1500.f; // 底盘前后 满杆速度
+	constexpr float    DOWN_STAIRS_SPD_Z = 700.f;  // 底盘自转 满杆速度
 }
 
 void RC::Init(UART* huart, USART_TypeDef* Instance, const uint32_t BaudRate)
@@ -79,7 +102,7 @@ void RC::RC_CheckState() {
 		break;
 
 	case RC_STATE(UP, DOWN):
-		ctrl.mode = CONTROL::SPINNING;
+		ctrl.mode = CONTROL::DOWN_STAIRS;
 		break;
 
 	case RC_STATE(MID, UP):
@@ -91,7 +114,7 @@ void RC::RC_CheckState() {
 		break;
 
 	case RC_STATE(MID, DOWN):
-		ctrl.mode = CONTROL::SEPARATE;
+		ctrl.mode = CONTROL::SPINNING;
 		break;
 
 	case RC_STATE(DOWN, UP):
@@ -122,6 +145,15 @@ void RC::RC_Control() {
 		return_zero_time = 0;
 
 		return_zero_flag = false;
+	}
+
+	if (ctrl.mode != CONTROL::DOWN_STAIRS)
+	{
+		down_stairs_phase = DOWN_STAIRS_PHASE::GO_ZERO;
+
+		down_stairs_hold_time = 0;
+
+		down_stairs_ready = false;
 	}
 
 	if (ctrl.mode != CONTROL::RESET)
@@ -209,40 +241,116 @@ void RC::RC_Control() {
 			break;
 		}
 
-		case CONTROL::SEPARATE:
+		case CONTROL::DOWN_STAIRS:
 		{
+			// ① 限速：每周期无条件重设，绝不出现 0
+			for (uint8_t i = 0; i < 4; i++)
+			{
+				DMmotor[i].setSpeed = (i == 1 || i == 3) ? DOWN_STAIRS_V_BACK : DOWN_STAIRS_V_FRONT;
+			}
 
-			if (Shift_mode())
+			// ② 目标：从各自行程推出，反向到底并留余量（不可能被静默钳位）
+			const float target[4] =
+			{
+				6.0f,
+			  - 2.5f,
+			  - 6.0f,
+			    2.5f
+			};
+
+			// ③ 底盘先用 0 兜底；只有 HOLD_READY 才让摇杆接管
+			ctrl.chassis.speedx = 0;
+			ctrl.chassis.speedy = 0;
+			ctrl.chassis.speedz = 0;
+
+			switch (down_stairs_phase)
+			{
+			case DOWN_STAIRS_PHASE::GO_ZERO:
 			{
 				for (uint8_t i = 0; i < 4; i++)
 				{
-					DMmotor[i].setSpeed = 5.0f;
-					DMmotor[i].SetTargetPos(DMmotor[i].pos);   // 只设一次
+					DMmotor[i].SetTargetPos(0.0f);
 				}
+
+				bool arrived = true;
+
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					if (fabsf(DMmotor[i].pos) > DOWN_STAIRS_EPS)
+					{
+						arrived = false;
+						break;
+					}
+				}
+
+				if (arrived)
+				{
+					down_stairs_phase = DOWN_STAIRS_PHASE::GO_TARGET;
+				}
+
+				break;
 			}
 
-			ctrl.chassis.speedx = rc.ch[3] * 2500.f / 660.f;
-			ctrl.chassis.speedy = rc.ch[2] * 2500.f / 660.f;
-			ctrl.chassis.speedz = 0.0f;
-
-
-			if (Shift_mode())
+			case DOWN_STAIRS_PHASE::GO_TARGET:          // ← 摆臂过程，底盘锁 0
 			{
-				DMmotor[YAW].SetTargetPos(DMmotor[YAW].pos);
-				DMmotor[YAW].setPos = DMmotor[YAW].pos;
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].SetTargetPos(target[i]);
+				}
 
-				DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].pos);
-				DMmotor[PITCH].setPos = DMmotor[PITCH].pos;
-			}//只在切入模式时执行一次，防止电机突转
+				bool arrived = true;
 
-			DMmotor[YAW].setSpeed = 5.0f;
+				for (uint8_t i = 0; i < 3; i++)
+				{
+					if (fabsf(DMmotor[i].pos - target[i]) > DOWN_STAIRS_EPS)
+					{
+						arrived = false;
+						break;
+					}
+				}
 
-			DMmotor[YAW].SetTargetPos(DMmotor[YAW].targetPos + rc.ch[0] / 660.0f * 0.01f);
+				if (arrived)
+				{
+					if (down_stairs_hold_time == 0)
+					{
+						down_stairs_hold_time = HAL_GetTick();
+					}
 
-			DMmotor[PITCH].setSpeed = 3.0f;
-			DMmotor[PITCH].SetTargetPos(DMmotor[PITCH].targetPos + rc.ch[1] / 660.0f * 0.01f);
-		
+					if (HAL_GetTick() - down_stairs_hold_time >= DOWN_STAIRS_HOLD_MS)
+					{
+						down_stairs_hold_time = 0;
+						down_stairs_ready = true;
+						down_stairs_phase = DOWN_STAIRS_PHASE::HOLD_READY;
+					}
+				}
+				else
+				{
+					down_stairs_hold_time = 0;
+				}
 
+				break;
+			}
+
+			case DOWN_STAIRS_PHASE::HOLD_READY:         // ← 姿态锁死 + 摇杆开底盘
+			{
+				for (uint8_t i = 0; i < 4; i++)
+				{
+					DMmotor[i].SetTargetPos(target[i]);
+				}
+
+				ctrl.chassis.speedx = rc.ch[2] * DOWN_STAIRS_SPD_X / 660.f;   // 左摇杆上下：前进/后退
+				ctrl.chassis.speedz = rc.ch[0] * DOWN_STAIRS_SPD_Z / 660.f;   // 右摇杆左右：自转
+				ctrl.chassis.speedy = 0;                                       // 下台阶不用横移
+
+				break;
+			}
+			}
+
+			break;
+		}
+			
+		case CONTROL::SEPARATE:
+		{
 			break;
 		}
 
@@ -267,7 +375,7 @@ void RC::RC_Control() {
 				if (fabsf(yaw_err_deg) < 0.5f)
 					yaw_err_deg = 0.0f;
 
-				if (fabsf(pitch_err_deg) < 0.3f)
+				if (fabsf(pitch_err_deg) < 0.5f)
 					pitch_err_deg = 0.0f;
 
 				while (yaw_err_deg > 180.0f)
